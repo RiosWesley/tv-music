@@ -21,6 +21,8 @@
   .meta { min-width: 0; flex: 1; }
   .meta b, .meta span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .meta span, .muted { color: var(--muted); font-size: 13px; }
+  .now .by { color: var(--accent); }
+  .by:empty { display: none; }
   .tv { font-size: 12px; padding: 4px 8px; border-radius: 99px; background: var(--card); color: var(--muted); flex: none; }
   .tv.on { color: #4ade80; opacity: 1; }
   .seek { display: flex; gap: 8px; align-items: center; margin: 12px 0 4px; font-size: 12px; color: var(--muted);
@@ -61,7 +63,7 @@
 <div class="sticky">
   <div class="now">
     <img id="art" alt="">
-    <div class="meta"><b id="title">Nada tocando</b><span id="artist">Cole um link abaixo</span></div>
+    <div class="meta"><b id="title">Nada tocando</b><span id="artist">Cole um link abaixo</span><span id="addedBy" class="by"></span></div>
     <button id="tv" class="tv">Abrir na TV</button>
   </div>
   <div class="seek"><span id="cur">0:00</span><input id="seek" type="range" min="0" max="0" value="0" aria-label="Posição"><span id="dur">0:00</span></div>
@@ -110,6 +112,7 @@
     const item = s.queue[s.index];
     $('title').textContent = item ? item.title : 'Nada tocando';
     $('artist').textContent = item ? item.artist : 'Cole um link abaixo';
+    $('addedBy').textContent = item && item.addedBy ? `Adicionada por ${item.addedBy}` : '';
     $('art').src = item ? thumb(item.id) : '';
     $('tv').textContent = s.tv ? 'TV on' : 'Abrir na TV';
     $('tv').classList.toggle('on', s.tv);
@@ -120,7 +123,7 @@
     $('count').textContent = s.queue.length ? `${s.queue.length} músicas na fila` : '';
 
     const tpl = document.createElement('template');
-    tpl.innerHTML = `<li><img loading="lazy" alt=""><div class="meta" data-act="play"><b class="t"></b><span></span></div>
+    tpl.innerHTML = `<li><img loading="lazy" alt=""><div class="meta" data-act="play"><b class="t"></b><span></span><span class="by"></span></div>
       <button data-act="playNext" aria-label="Tocar a seguir"><svg><use href="#i-next-up"/></svg></button>
       <button data-act="remove" aria-label="Remover"><svg><use href="#i-remove"/></svg></button></li>`;
     $('queue').replaceChildren(...s.queue.map((q, i) => {
@@ -130,6 +133,7 @@
       li.querySelector('img').src = thumb(q.id);
       li.querySelector('b').textContent = q.title;
       li.querySelector('span').textContent = [q.artist, q.duration ? fmt(q.duration) : ''].filter(Boolean).join(' · ');
+      li.querySelector('.by').textContent = q.addedBy ? `por ${q.addedBy}` : '';
       return li;
     }));
   }
