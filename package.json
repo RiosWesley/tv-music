@@ -1,0 +1,19 @@
+{
+  "name": "tv-music",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js",
+    "test": "node --test",
+    "tv:package": "ares-package webos -o dist",
+    "tv:install": "ares-install --device tv dist/com.wesley.tvmusic_1.0.0_all.ipk && ares-launch --device tv com.wesley.tvmusic"
+  },
+  "dependencies": {
+    "ws": "^8.22.0",
+    "youtubei.js": "^18.2.0"
+  },
+  "devDependencies": {
+    "@webos-tools/cli": "^3.2.6"
+  }
+}

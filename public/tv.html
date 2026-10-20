@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>TV Music</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; color: #fff; overflow: hidden; font-family: sans-serif; }
+  /* pointer-events: none mantém o foco na página, senão o iframe engole as teclas do controle remoto */
+  #player { position: fixed; top: 0; left: 0; width: 100%; height: 100%; border: 0; pointer-events: none; }
+  #idle { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column;
+          align-items: center; justify-content: center; text-align: center; font-size: 44px; background: #0f0f0f; }
+  #idle small { font-size: 30px; opacity: .7; margin-top: 16px; }
+</style>
+</head>
+<body>
+<div id="player"></div>
+<div id="idle">Fila vazia<small>No celular, abra <b id="addr"></b></small></div>
+<script>
+  var player = null;
+  var ready = false;
+  var loadedPlayId = null;
+  var last = null;
+  var idle = document.getElementById('idle');
+  document.getElementById('addr').textContent = 'http://' + location.host;
+
+  function post(path, body) {
+    fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .catch(function (e) { console.error(path, e); });
+  }
+
+  function apply(s) {
+    last = s;
+    if (!ready) return;
+    var item = s.queue[s.index];
+    idle.style.display = item ? 'none' : 'flex';
+    if (!item) {
+      if (loadedPlayId !== null) player.stopVideo();
+      loadedPlayId = null;
+      return;
+    }
+    if (s.playId !== loadedPlayId) {
+      loadedPlayId = s.playId;
+      var opts = { videoId: item.id, startSeconds: s.time };
+      if (s.paused) player.cueVideoById(opts);
+      else player.loadVideoById(opts);
+    } else if (s.paused) {
+      player.pauseVideo();
+    } else {
+      var st = player.getPlayerState();
+      if (st === YT.PlayerState.PAUSED || st === YT.PlayerState.CUED) player.playVideo();
+    }
+    player.setVolume(s.volume);
+  }
+
+  function onYouTubeIframeAPIReady() {
+    player = new YT.Player('player', {
+      width: '100%',
+      height: '100%',
+      playerVars: { autoplay: 1, controls: 0, rel: 0, iv_load_policy: 3, playsinline: 1, origin: location.origin },
+      events: {
+        onReady: function () {
+          ready = true;
+          if (last) apply(last);
+        },
+        onStateChange: function (e) {
+          if (e.data === YT.PlayerState.ENDED) post('/tv', { type: 'ended', playId: loadedPlayId });
+        },
+        onError: function (e) {
+          post('/tv', { type: 'error', playId: loadedPlayId, code: e.data });
+        }
+      }
+    });
+  }
+
+  setInterval(function () {
+    if (!ready || loadedPlayId === null) return;
+    post('/tv', {
+      type: 'progress',
+      playId: loadedPlayId,
+      time: player.getCurrentTime(),
+      duration: player.getDuration(),
+      playing: player.getPlayerState() === YT.PlayerState.PLAYING
+    });
+  }, 1000);
+
+  var events = new EventSource('/events?role=tv');
+  events.addEventListener('state', function (e) { apply(JSON.parse(e.data)); });
+  events.addEventListener('seek', function (e) { if (ready) player.seekTo(JSON.parse(e.data), true); });
+
+  // O PC reabriu o app (iniciar.bat ou botão no celular): vai para o servidor informado, que pode ter mudado de IP.
+  document.addEventListener('webOSRelaunch', function () {
+    var params = JSON.parse(window.PalmSystem.launchParams || '{}');
+    if (params.server) location.replace(params.server + '/tv');
+  });
+
+  // Teclas do controle LG: OK/Play/Pause, setas e avançar/voltar
+  document.addEventListener('keydown', function (e) {
+    var cmd = null;
+    if (e.keyCode === 13 && last) cmd = { type: 'pause', value: !last.paused };
+    else if (e.keyCode === 415) cmd = { type: 'pause', value: false };
+    else if (e.keyCode === 19) cmd = { type: 'pause', value: true };
+    else if (e.keyCode === 39 || e.keyCode === 417) cmd = { type: 'next' };
+    else if (e.keyCode === 37 || e.keyCode === 412) cmd = { type: 'prev' };
+    if (!cmd) return;
+    e.preventDefault();
+    post('/cmd', cmd);
+  });
+</script>
+<script src="https://www.youtube.com/iframe_api"></script>
+</body>
+</html>

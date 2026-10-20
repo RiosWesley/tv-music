@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>TV Music</title></head>
+<body style="margin:0;background:#0f0f0f;color:#fff;font:40px sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;text-align:center">
+<p id="msg">Conectando...</p>
+<script>
+  // O PC manda o endereço do servidor ao abrir o app (iniciar.bat). Fica salvo para quando abrir pelo controle remoto.
+  var msg = document.getElementById('msg');
+  var attempt = 0;
+
+  function savedServer() {
+    var params = JSON.parse(window.PalmSystem.launchParams || '{}');
+    if (params.server) localStorage.setItem('server', params.server);
+    return localStorage.getItem('server');
+  }
+
+  function connect() {
+    var server = savedServer();
+    var current = ++attempt;
+    if (!server) {
+      msg.textContent = 'Rode o iniciar.bat no PC para conectar.';
+      return;
+    }
+    var xhr = new XMLHttpRequest();
+    xhr.timeout = 5000;
+    xhr.onload = function () { location.replace(server + '/tv'); };
+    xhr.onerror = xhr.ontimeout = function () {
+      if (current !== attempt) return;
+      msg.textContent = 'PC offline (' + server + '). Rode o iniciar.bat no PC. Tentando de novo...';
+      setTimeout(function () { if (current === attempt) connect(); }, 5000);
+    };
+    xhr.open('GET', server + '/ping');
+    xhr.send();
+  }
+
+  document.addEventListener('webOSRelaunch', connect);
+  connect();
+</script>
+</body>
+</html>

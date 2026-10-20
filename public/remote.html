@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f0f0f">
+<title>TV Music</title>
+<style>
+  :root { --bg: #0f0f0f; --card: #1c1c1c; --line: #2a2a2a; --text: #f1f1f1; --muted: #9a9a9a; --accent: #ff3b3b; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.4 system-ui, sans-serif;
+         -webkit-tap-highlight-color: transparent; padding: 16px max(16px, env(safe-area-inset-left)) 32px; }
+  button { font: inherit; color: inherit; background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+           padding: 10px 14px; cursor: pointer; touch-action: manipulation; }
+  button:active { transform: scale(.96); }
+  button:disabled { opacity: .5; }
+  svg { width: 24px; height: 24px; fill: currentColor; display: block; }
+  .sticky { position: sticky; top: 0; background: var(--bg); padding-bottom: 12px; z-index: 1; }
+  .now { display: flex; gap: 12px; align-items: center; }
+  .now img { width: 64px; height: 64px; border-radius: 8px; object-fit: cover; background: var(--card); flex: none; }
+  .meta { min-width: 0; flex: 1; }
+  .meta b, .meta span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .meta span, .muted { color: var(--muted); font-size: 13px; }
+  .tv { font-size: 12px; padding: 4px 8px; border-radius: 99px; background: var(--card); color: var(--muted); flex: none; }
+  .tv.on { color: #4ade80; opacity: 1; }
+  .seek { display: flex; gap: 8px; align-items: center; margin: 12px 0 4px; font-size: 12px; color: var(--muted);
+          font-variant-numeric: tabular-nums; }
+  input[type=range] { flex: 1; accent-color: var(--accent); }
+  .controls { display: flex; justify-content: center; gap: 12px; margin: 8px 0; }
+  .controls button { border-radius: 99px; padding: 12px; }
+  .controls #toggle { background: var(--text); color: var(--bg); padding: 16px; }
+  .controls #toggle svg { width: 30px; height: 30px; }
+  .vol { display: flex; gap: 8px; align-items: center; color: var(--muted); }
+  form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 16px 0; }
+  form input { grid-column: 1 / -1; font: inherit; font-size: 16px; color: var(--text); background: var(--card);
+               border: 1px solid var(--line); border-radius: 12px; padding: 12px; min-width: 0; }
+  form button[value=replace] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  #error { grid-column: 1 / -1; color: var(--accent); font-size: 13px; margin: 0; }
+  #error:empty { display: none; }
+  ol { list-style: none; padding: 0; margin: 0; }
+  li { display: flex; gap: 10px; align-items: center; padding: 8px 4px; border-bottom: 1px solid var(--line); }
+  li.current { background: #26181a; border-radius: 8px; }
+  li.current .t { color: var(--accent); }
+  li img { width: 48px; height: 36px; object-fit: cover; border-radius: 4px; flex: none; background: var(--card); }
+  li .meta { cursor: pointer; }
+  li button { padding: 8px; background: none; border: none; color: var(--muted); }
+  li svg { width: 20px; height: 20px; }
+</style>
+</head>
+<body>
+<svg style="display:none">
+  <symbol id="i-prev" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></symbol>
+  <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M10.59 9.17 5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></symbol>
+  <symbol id="i-next-up" viewBox="0 0 24 24"><path d="M3 10h11v2H3zm0-4h11v2H3zm0 8h7v2H3zm13-1v8l6-4z"/></symbol>
+  <symbol id="i-remove" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></symbol>
+</svg>
+
+<div class="sticky">
+  <div class="now">
+    <img id="art" alt="">
+    <div class="meta"><b id="title">Nada tocando</b><span id="artist">Cole um link abaixo</span></div>
+    <button id="tv" class="tv">Abrir na TV</button>
+  </div>
+  <div class="seek"><span id="cur">0:00</span><input id="seek" type="range" min="0" max="0" value="0" aria-label="Posição"><span id="dur">0:00</span></div>
+  <div class="controls">
+    <button data-cmd="shuffle" aria-label="Embaralhar"><svg><use href="#i-shuffle"/></svg></button>
+    <button data-cmd="prev" aria-label="Anterior"><svg><use href="#i-prev"/></svg></button>
+    <button id="toggle" aria-label="Tocar/pausar"><svg><use href="#i-play"/></svg></button>
+    <button data-cmd="next" aria-label="Próxima"><svg><use href="#i-next"/></svg></button>
+  </div>
+  <label class="vol">Vol <input id="volume" type="range" min="0" max="100" aria-label="Volume"></label>
+</div>
+
+<form id="load">
+  <input name="url" type="text" inputmode="url" placeholder="Link de playlist ou música do YouTube Music" required autocomplete="off">
+  <button name="mode" value="replace">Tocar agora</button>
+  <button name="mode" value="append">Adicionar à fila</button>
+  <p id="error"></p>
+</form>
+
+<p class="muted" id="count"></p>
+<ol id="queue"></ol>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const thumb = (id) => `https://i.ytimg.com/vi/${id}/mqdefault.jpg`;
+  const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  let state = null;
+  let dragging = false;
+
+  async function cmd(body) {
+    const res = await fetch('/cmd', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!res.ok) throw new Error(await res.text());
+  }
+  const run = (body) => cmd(body).catch((e) => alert(e.message));
+
+  function progress({ time, duration }) {
+    $('seek').max = Math.floor(duration);
+    $('dur').textContent = fmt(duration);
+    if (dragging) return;
+    $('seek').value = Math.floor(time);
+    $('cur').textContent = fmt(time);
+  }
+
+  function render(s) {
+    state = s;
+    const item = s.queue[s.index];
+    $('title').textContent = item ? item.title : 'Nada tocando';
+    $('artist').textContent = item ? item.artist : 'Cole um link abaixo';
+    $('art').src = item ? thumb(item.id) : '';
+    $('tv').textContent = s.tv ? 'TV on' : 'Abrir na TV';
+    $('tv').classList.toggle('on', s.tv);
+    $('tv').disabled = s.tv;
+    $('toggle').querySelector('use').setAttribute('href', s.paused ? '#i-play' : '#i-pause');
+    if (document.activeElement !== $('volume')) $('volume').value = s.volume;
+    progress(s);
+    $('count').textContent = s.queue.length ? `${s.queue.length} músicas na fila` : '';
+
+    const tpl = document.createElement('template');
+    tpl.innerHTML = `<li><img loading="lazy" alt=""><div class="meta" data-act="play"><b class="t"></b><span></span></div>
+      <button data-act="playNext" aria-label="Tocar a seguir"><svg><use href="#i-next-up"/></svg></button>
+      <button data-act="remove" aria-label="Remover"><svg><use href="#i-remove"/></svg></button></li>`;
+    $('queue').replaceChildren(...s.queue.map((q, i) => {
+      const li = tpl.content.firstElementChild.cloneNode(true);
+      li.dataset.index = i;
+      li.classList.toggle('current', i === s.index);
+      li.querySelector('img').src = thumb(q.id);
+      li.querySelector('b').textContent = q.title;
+      li.querySelector('span').textContent = [q.artist, q.duration ? fmt(q.duration) : ''].filter(Boolean).join(' · ');
+      return li;
+    }));
+  }
+
+  const events = new EventSource('/events');
+  events.addEventListener('state', (e) => render(JSON.parse(e.data)));
+  events.addEventListener('progress', (e) => progress(JSON.parse(e.data)));
+
+  document.querySelectorAll('[data-cmd]').forEach((b) => b.addEventListener('click', () => run({ type: b.dataset.cmd })));
+  $('tv').addEventListener('click', async () => {
+    $('tv').textContent = 'Abrindo...';
+    $('tv').disabled = true;
+    const res = await fetch('/open-tv', { method: 'POST' });
+    if (!res.ok) alert(await res.text());
+    if (state) render(state);
+  });
+  $('toggle').addEventListener('click', () => state && run({ type: 'pause', value: !state.paused }));
+
+  $('seek').addEventListener('input', () => { dragging = true; $('cur').textContent = fmt($('seek').value); });
+  $('seek').addEventListener('change', () => { dragging = false; run({ type: 'seek', time: Number($('seek').value) }); });
+  $('volume').addEventListener('change', () => run({ type: 'volume', value: Number($('volume').value) }));
+
+  $('queue').addEventListener('click', (e) => {
+    const target = e.target.closest('[data-act]');
+    if (!target) return;
+    run({ type: target.dataset.act, index: Number(target.closest('li').dataset.index) });
+  });
+
+  $('load').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const buttons = form.querySelectorAll('button');
+    buttons.forEach((b) => { b.disabled = true; });
+    $('error').textContent = '';
+    try {
+      await cmd({ type: 'load', url: form.url.value, mode: e.submitter.value });
+      form.reset();
+    } catch (err) {
+      $('error').textContent = err.message;
+    } finally {
+      buttons.forEach((b) => { b.disabled = false; });
+    }
+  });
+</script>
+</body>
+</html>
