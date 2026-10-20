@@ -44,6 +44,13 @@ async function runCommand(body) {
 async function openTv() {
   const { tv, server } = await openOnTv(PORT);
   console.log(`App aberto na TV ${tv}. No celular: ${server}`);
+  setTimeout(() => {
+    if (state.tv) return;
+    console.warn(
+      `A TV não conseguiu acessar ${server}. Provável firewall do Windows: em "Permitir um aplicativo pelo Firewall do Windows", ` +
+        'marque Node.js em "Privada" e "Pública" (ou mude esta rede para Privada).',
+    );
+  }, 20000);
 }
 
 function openStream(req, res, role) {
