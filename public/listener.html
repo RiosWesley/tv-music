@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f0f0f">
+<title>TV Music</title>
+<style>
+  :root { --bg: #0f0f0f; --card: #1c1c1c; --line: #2a2a2a; --text: #f1f1f1; --muted: #9a9a9a; --accent: #ff3b3b; --like: #4ade80; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); font: 16px/1.4 system-ui, sans-serif;
+         -webkit-tap-highlight-color: transparent; padding: 24px max(16px, env(safe-area-inset-left)) 32px;
+         display: flex; justify-content: center; }
+  main, form { width: 100%; max-width: 420px; }
+  [hidden] { display: none !important; }
+  button { font: inherit; color: inherit; background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+           padding: 12px 16px; cursor: pointer; touch-action: manipulation; }
+  button:active { transform: scale(.96); }
+  button:disabled { opacity: .4; }
+  h1 { font-size: 22px; margin: 16px 0 4px; overflow-wrap: anywhere; }
+  p { margin: 0; }
+  .muted { color: var(--muted); }
+  .by { color: var(--accent); font-size: 14px; margin-top: 4px; }
+  .by:empty { display: none; }
+  form { display: flex; flex-direction: column; gap: 12px; margin-top: 15vh; }
+  form h1 { margin: 0; }
+  form input { font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--line);
+               border-radius: 14px; padding: 14px; }
+  form button { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  #art { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 16px; background: var(--card); }
+  .bar { height: 4px; background: var(--line); border-radius: 2px; margin: 16px 0; overflow: hidden; }
+  #progress { height: 100%; width: 0; background: var(--accent); transition: width 1s linear; }
+  .votes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .votes button { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 16px; font-size: 20px;
+                  font-variant-numeric: tabular-nums; }
+  .votes svg { width: 28px; height: 28px; fill: currentColor; }
+  #like[aria-pressed=true] { background: #12301d; border-color: var(--like); color: var(--like); }
+  #dislike[aria-pressed=true] { background: #3a1416; border-color: var(--accent); color: var(--accent); }
+  .me { margin-top: 20px; text-align: center; font-size: 14px; }
+  .link { background: none; border: none; padding: 0; color: var(--text); text-decoration: underline; }
+</style>
+</head>
+<body>
+<form id="join" hidden>
+  <h1>Bora votar nas músicas</h1>
+  <p class="muted">Diga seu nome para curtir ou não curtir o que está tocando na TV.</p>
+  <input name="name" required maxlength="40" autocomplete="given-name" placeholder="Seu nome">
+  <button>Entrar</button>
+</form>
+
+<main id="app" hidden>
+  <img id="art" alt="">
+  <h1 id="title">Nada tocando</h1>
+  <p id="artist" class="muted"></p>
+  <p id="addedBy" class="by"></p>
+  <div class="bar"><div id="progress"></div></div>
+  <div class="votes">
+    <button id="like" aria-label="Curtir" aria-pressed="false">
+      <svg viewBox="0 0 24 24"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>
+      <span id="likes">0</span>
+    </button>
+    <button id="dislike" aria-label="Não curtir" aria-pressed="false">
+      <svg viewBox="0 0 24 24"><path d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v2c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z"/></svg>
+      <span id="dislikes">0</span>
+    </button>
+  </div>
+  <p class="me muted">Votando como <b id="me"></b> · <button id="change" class="link">trocar</button></p>
+</main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const voterKey = (name) => name.trim().replace(/\s+/g, ' ').toLowerCase(); // mesma regra de votes.js
+  let state = null;
+  let name = localStorage.getItem('name') ?? '';
+
+  function myVote() {
+    return state && state.votes ? state.votes.voters[voterKey(name)] ?? 0 : 0;
+  }
+
+  function showScreen() {
+    $('join').hidden = Boolean(name);
+    $('app').hidden = !name;
+    $('me').textContent = name;
+    if (state) render(state);
+  }
+
+  function progress({ time, duration }) {
+    $('progress').style.width = duration ? `${Math.min(100, (time / duration) * 100)}%` : '0';
+  }
+
+  function render(s) {
+    state = s;
+    const item = s.queue[s.index];
+    $('art').src = item ? `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg` : '';
+    $('art').style.visibility = item ? 'visible' : 'hidden';
+    $('title').textContent = item ? item.title : 'Nada tocando';
+    $('artist').textContent = item ? item.artist : '';
+    $('addedBy').textContent = item && item.addedBy ? `Adicionada por ${item.addedBy}` : '';
+    $('likes').textContent = s.votes ? s.votes.likes : 0;
+    $('dislikes').textContent = s.votes ? s.votes.dislikes : 0;
+    $('like').setAttribute('aria-pressed', myVote() === 1);
+    $('dislike').setAttribute('aria-pressed', myVote() === -1);
+    $('like').disabled = $('dislike').disabled = !item;
+    progress(s);
+  }
+
+  async function vote(value) {
+    const item = state.queue[state.index];
+    const res = await fetch('/vote', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      // tocar no voto que já está marcado desfaz o voto
+      body: JSON.stringify({ name, id: item.id, value: myVote() === value ? 0 : value }),
+    });
+    if (!res.ok) alert(await res.text());
+  }
+
+  $('like').addEventListener('click', () => vote(1));
+  $('dislike').addEventListener('click', () => vote(-1));
+
+  $('join').addEventListener('submit', (e) => {
+    e.preventDefault();
+    name = e.currentTarget.name.value.trim().replace(/\s+/g, ' ');
+    if (!name) return;
+    localStorage.setItem('name', name);
+    showScreen();
+  });
+
+  $('change').addEventListener('click', () => {
+    name = '';
+    localStorage.removeItem('name');
+    $('join').reset();
+    showScreen();
+  });
+
+  const events = new EventSource('/events');
+  events.addEventListener('state', (e) => render(JSON.parse(e.data)));
+  events.addEventListener('progress', (e) => progress(JSON.parse(e.data)));
+  showScreen();
+</script>
+</body>
+</html>

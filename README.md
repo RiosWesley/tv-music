@@ -11,7 +11,10 @@ Toca playlists do YouTube Music na TV LG (webOS) com a fila inteira, controlada 
 1. Ligue a TV.
 2. No PC, dê dois cliques em **`iniciar.bat`**.
 
-O servidor acha a TV na rede, descobre o IP atual do PC e abre o app na TV já apontando para ele. A janela mostra o endereço para abrir no celular.
+O servidor acha a TV na rede, descobre o IP atual do PC e abre o app na TV já apontando para ele. A janela mostra os endereços:
+
+- `http://<ip-do-pc>:8080` é o controle completo (fila, pular, volume).
+- `http://<ip-do-pc>:8080/ouvinte` é para quem só quer ver o que está tocando e curtir ou não curtir. Pede um nome antes de votar; cada nome tem um voto por música, e os votos ficam em `votes.json`.
 Se a TV estava desligada, ligue-a e toque em **Abrir na TV** no celular. Abrir o app pelo controle remoto também funciona, enquanto o IP do PC não mudar.
 
 Para iniciar junto com o Windows: `Win+R` → `shell:startup` → crie ali um atalho para o `iniciar.bat`.

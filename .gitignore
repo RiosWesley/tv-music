@@ -3,3 +3,4 @@ dist/
 .env
 state.json
 tv-key.json
+votes.json

@@ -5,21 +5,30 @@ import { networkInterfaces } from 'node:os';
 import { createPlayer, initialState } from './player.js';
 import { resolve } from './youtube.js';
 import { openOnTv } from './tv.js';
+import { createVotes } from './votes.js';
 
 const PORT = Number(process.env.PORT ?? 8080);
 const STATE_FILE = join(import.meta.dirname, 'state.json');
-const PAGES = { '/': 'remote.html', '/tv': 'tv.html' };
+const VOTES_FILE = join(import.meta.dirname, 'votes.json');
+const PAGES = { '/': 'remote.html', '/ouvinte': 'listener.html', '/tv': 'tv.html' };
 
 const state = existsSync(STATE_FILE) ? JSON.parse(readFileSync(STATE_FILE, 'utf8')) : initialState();
 state.tv = false;
 const player = createPlayer(state);
+const votes = createVotes(existsSync(VOTES_FILE) ? JSON.parse(readFileSync(VOTES_FILE, 'utf8')) : {});
 const clients = new Map(); // res -> 'tv' | 'remote'
 
 function send(res, event, data) {
   res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 }
 
-function emit(event = 'state', data = state) {
+// O que as telas recebem: o estado salvo mais o placar da música atual.
+function snapshot() {
+  const item = state.queue[state.index];
+  return { ...state, votes: item ? votes.tally(item.id) : null };
+}
+
+function emit(event = 'state', data = snapshot()) {
   for (const res of clients.keys()) send(res, event, data);
   if (event === 'state') writeFileSync(STATE_FILE, JSON.stringify(state));
 }
@@ -43,7 +52,7 @@ async function runCommand(body) {
 
 async function openTv() {
   const { tv, server } = await openOnTv(PORT);
-  console.log(`App aberto na TV ${tv}. No celular: ${server}`);
+  console.log(`App aberto na TV ${tv}. Celular (admin): ${server}  |  Ouvintes: ${server}/ouvinte`);
   setTimeout(() => {
     if (state.tv) return;
     console.warn(
@@ -61,7 +70,7 @@ function openStream(req, res, role) {
     state.tv = true;
     emit();
   } else {
-    send(res, 'state', state);
+    send(res, 'state', snapshot());
   }
   req.on('close', () => {
     clients.delete(res);
@@ -108,6 +117,13 @@ http
         openStream(req, res, searchParams.get('role') === 'tv' ? 'tv' : 'remote');
       } else if (req.method === 'POST' && pathname === '/cmd') {
         await runCommand(await readJson(req));
+        res.writeHead(204).end();
+      } else if (req.method === 'POST' && pathname === '/vote') {
+        const body = await readJson(req);
+        if (!state.queue.some((item) => item.id === body.id)) throw new Error('Essa música não está na fila');
+        votes.vote(body);
+        writeFileSync(VOTES_FILE, JSON.stringify(votes));
+        emit();
         res.writeHead(204).end();
       } else if (req.method === 'POST' && pathname === '/open-tv') {
         await openTv();
