@@ -1,7 +1,23 @@
-export const initialState = () => ({ queue: [], index: 0, playId: 0, paused: false, volume: 100, time: 0, duration: 0, tv: false });
+export const initialState = () => ({
+  queue: [],
+  index: 0,
+  playId: 0,
+  paused: false,
+  volume: 100,
+  time: 0,
+  duration: 0,
+  tv: false,
+  smartShuffle: false,
+  history: [], // IDs do que tocou antes da atual, para "voltar" e para o aleatório 2.0 não repetir
+  upNext: [], // IDs pedidos com "tocar a seguir", que furam o sorteio do aleatório 2.0
+});
+
+const HISTORY_SIZE = 100;
+const NO_REPEAT = 30;
 
 // Regras da fila. O estado é a fonte da verdade: a TV só reflete. playId muda sempre que uma faixa deve (re)começar.
-export function createPlayer(state) {
+// weights(ids) devolve o peso de cada música no aleatório 2.0.
+export function createPlayer(state, weights) {
   let errorStreak = 0;
 
   function startTrack(index) {
@@ -10,6 +26,35 @@ export function createPlayer(state) {
     state.playId++;
     state.time = 0;
     state.duration = state.queue[state.index].duration;
+  }
+
+  // Troca de faixa lembrando a atual, para "voltar" refazer o caminho que realmente tocou.
+  function moveTo(index) {
+    const current = state.queue[state.index];
+    if (current) state.history = [...state.history, current.id].slice(-HISTORY_SIZE);
+    startTrack(index);
+  }
+
+  const indexOf = (id) => state.queue.findIndex((item) => item.id === id);
+
+  // Aleatório 2.0: sorteia pelo peso dos votos, sem repetir as últimas tocadas (até 30, ou metade da fila).
+  function draw() {
+    const played = [...state.history, state.queue[state.index]?.id];
+    const noRepeat = Math.min(NO_REPEAT, Math.floor(state.queue.length / 2));
+    const recent = new Set(played.slice(Math.max(0, played.length - noRepeat)));
+    const weight = weights(state.queue.map((item) => item.id));
+    const candidates = state.queue.map((_, i) => i).filter((i) => !recent.has(state.queue[i].id));
+    if (!candidates.length) return state.index + 1; // só IDs repetidos na fila
+    let roll = Math.random() * candidates.reduce((sum, i) => sum + weight[i], 0);
+    return candidates.find((i) => (roll -= weight[i]) < 0) ?? candidates.at(-1);
+  }
+
+  function nextIndex() {
+    while (state.upNext.length) {
+      const index = indexOf(state.upNext.shift());
+      if (index >= 0 && index !== state.index) return index;
+    }
+    return state.smartShuffle ? draw() : state.index + 1;
   }
 
   function checkIndex(index) {
@@ -24,22 +69,25 @@ export function createPlayer(state) {
     else state.queue = items;
     if (mode !== 'append' || wasEmpty) {
       state.paused = false;
-      startTrack(0);
+      startTrack(state.smartShuffle ? draw() : 0);
     }
   }
 
   const commands = {
     play({ index }) {
       state.paused = false;
-      startTrack(checkIndex(index));
+      moveTo(checkIndex(index));
     },
     next() {
       state.paused = false;
-      startTrack(state.index + 1);
+      moveTo(nextIndex());
     },
     prev() {
       state.paused = false;
-      startTrack(state.time > 5 ? state.index : state.index - 1);
+      if (state.time > 5) return startTrack(state.index);
+      let index = -1;
+      while (index < 0 && state.history.length) index = indexOf(state.history.pop());
+      startTrack(index >= 0 ? index : state.index - 1);
     },
     pause({ value }) {
       state.paused = Boolean(value);
@@ -61,12 +109,15 @@ export function createPlayer(state) {
       if (current) state.queue.unshift(current);
       state.index = 0;
     },
+    smartShuffle({ value }) {
+      state.smartShuffle = Boolean(value);
+    },
     remove({ index }) {
       checkIndex(index);
+      if (index === state.index && state.queue.length > 1) moveTo(nextIndex()); // remover a atual pula para a próxima
       state.queue.splice(index, 1);
       if (!state.queue.length) state.index = 0;
       else if (index < state.index) state.index--;
-      else if (index === state.index) startTrack(state.index); // a seguinte ocupa o lugar e começa a tocar
     },
     playNext({ index }) {
       checkIndex(index);
@@ -74,6 +125,7 @@ export function createPlayer(state) {
       const [item] = state.queue.splice(index, 1);
       if (index < state.index) state.index--;
       state.queue.splice(state.index + 1, 0, item);
+      state.upNext.unshift(item.id);
     },
   };
 
@@ -89,7 +141,7 @@ export function createPlayer(state) {
     if (type === 'error' && ++errorStreak >= state.queue.length) {
       state.paused = true; // nada da fila toca na TV: para em vez de girar em loop
     } else if (type === 'ended' || type === 'error') {
-      startTrack(state.index + 1);
+      moveTo(nextIndex());
     }
     return 'state';
   }

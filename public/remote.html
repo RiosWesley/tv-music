@@ -33,6 +33,8 @@
   .controls #toggle { background: var(--text); color: var(--bg); padding: 16px; }
   .controls #toggle svg { width: 30px; height: 30px; }
   .vol { display: flex; gap: 8px; align-items: center; color: var(--muted); }
+  #smart { font-size: 13px; padding: 6px 12px; border-radius: 99px; color: var(--muted); flex: none; }
+  #smart[aria-pressed=true] { color: #4ade80; border-color: #4ade80; }
   form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 16px 0; }
   form input { grid-column: 1 / -1; font: inherit; font-size: 16px; color: var(--text); background: var(--card);
                border: 1px solid var(--line); border-radius: 12px; padding: 12px; min-width: 0; }
@@ -73,7 +75,10 @@
     <button id="toggle" aria-label="Tocar/pausar"><svg><use href="#i-play"/></svg></button>
     <button data-cmd="next" aria-label="Próxima"><svg><use href="#i-next"/></svg></button>
   </div>
-  <label class="vol">Vol <input id="volume" type="range" min="0" max="100" aria-label="Volume"></label>
+  <div class="vol">
+    <label for="volume">Vol</label><input id="volume" type="range" min="0" max="100" aria-label="Volume">
+    <button id="smart" aria-pressed="false" title="Sorteia a próxima dando mais chance às mais curtidas">Aleatório 2.0</button>
+  </div>
 </div>
 
 <form id="load">
@@ -118,6 +123,7 @@
     $('tv').classList.toggle('on', s.tv);
     $('tv').disabled = s.tv;
     $('toggle').querySelector('use').setAttribute('href', s.paused ? '#i-play' : '#i-pause');
+    $('smart').setAttribute('aria-pressed', s.smartShuffle);
     if (document.activeElement !== $('volume')) $('volume').value = s.volume;
     progress(s);
     $('count').textContent = s.queue.length ? `${s.queue.length} músicas na fila` : '';
@@ -151,6 +157,7 @@
     if (state) render(state);
   });
   $('toggle').addEventListener('click', () => state && run({ type: 'pause', value: !state.paused }));
+  $('smart').addEventListener('click', () => state && run({ type: 'smartShuffle', value: !state.smartShuffle }));
 
   $('seek').addEventListener('input', () => { dragging = true; $('cur').textContent = fmt($('seek').value); });
   $('seek').addEventListener('change', () => { dragging = false; run({ type: 'seek', time: Number($('seek').value) }); });

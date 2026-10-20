@@ -12,10 +12,11 @@ const STATE_FILE = join(import.meta.dirname, 'state.json');
 const VOTES_FILE = join(import.meta.dirname, 'votes.json');
 const PAGES = { '/': 'remote.html', '/ouvinte': 'listener.html', '/tv': 'tv.html' };
 
-const state = existsSync(STATE_FILE) ? JSON.parse(readFileSync(STATE_FILE, 'utf8')) : initialState();
+// Campos novos ficam com o valor inicial quando o state.json é de uma versão anterior.
+const state = { ...initialState(), ...(existsSync(STATE_FILE) ? JSON.parse(readFileSync(STATE_FILE, 'utf8')) : {}) };
 state.tv = false;
-const player = createPlayer(state);
 const votes = createVotes(existsSync(VOTES_FILE) ? JSON.parse(readFileSync(VOTES_FILE, 'utf8')) : {});
+const player = createPlayer(state, votes.weights);
 const clients = new Map(); // res -> 'tv' | 'remote'
 
 function send(res, event, data) {

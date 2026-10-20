@@ -27,7 +27,24 @@ export function createVotes(saved = {}) {
     };
   }
 
+  // Peso de cada música no aleatório 2.0, pela posição no ranking de saldo (curtidas − não curtidas) da fila:
+  // sem saldo = 1; a de maior saldo = 1,5 e as positivas descem até perto de 1 conforme quantas estão acima;
+  // espelhado até 0,5 para as negativas. Empates recebem o mesmo peso.
+  function weights(ids) {
+    const scores = ids.map((id) => {
+      const { likes, dislikes } = tally(id);
+      return likes - dislikes;
+    });
+    const positive = scores.filter((s) => s > 0);
+    const negative = scores.filter((s) => s < 0);
+    return scores.map((s) => {
+      if (s > 0) return 1 + 0.5 * (1 - positive.filter((o) => o > s).length / positive.length);
+      if (s < 0) return 1 - 0.5 * (1 - negative.filter((o) => o < s).length / negative.length);
+      return 1;
+    });
+  }
+
   const toJSON = () => Object.fromEntries([...songs].map(([id, voters]) => [id, Object.fromEntries(voters)]));
 
-  return { vote, tally, toJSON };
+  return { vote, tally, weights, toJSON };
 }

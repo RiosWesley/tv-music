@@ -15,6 +15,9 @@ O servidor acha a TV na rede, descobre o IP atual do PC e abre o app na TV já a
 
 - `http://<ip-do-pc>:8080` é o controle completo (fila, pular, volume).
 - `http://<ip-do-pc>:8080/ouvinte` é para quem só quer ver o que está tocando e curtir ou não curtir. Pede um nome antes de votar; cada nome tem um voto por música, e os votos ficam em `votes.json`.
+
+**Aleatório 2.0** (botão ao lado do volume): a cada música, sorteia a próxima dando mais chance às mais curtidas. Peso 1 para quem não tem votos, até 1,5 para a de maior saldo (curtidas − não curtidas) e até 0,5 para a de pior saldo. Não repete as últimas 30 tocadas (ou metade da fila, se for menor). "Tocar a seguir" fura o sorteio, e "voltar" volta para a que tocou antes de verdade.
+
 Se a TV estava desligada, ligue-a e toque em **Abrir na TV** no celular. Abrir o app pelo controle remoto também funciona, enquanto o IP do PC não mudar.
 
 Para iniciar junto com o Windows: `Win+R` → `shell:startup` → crie ali um atalho para o `iniciar.bat`.
