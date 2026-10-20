@@ -10,10 +10,13 @@
   #idle { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column;
           align-items: center; justify-content: center; text-align: center; font-size: 44px; background: #0f0f0f; }
   #idle small { font-size: 30px; opacity: .7; margin-top: 16px; }
+  #added { position: fixed; left: 0; right: 0; bottom: 0; padding: 80px 72px 48px; font-size: 36px; display: none;
+           background: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, .8)); text-shadow: 0 2px 8px #000; pointer-events: none; }
 </style>
 </head>
 <body>
 <div id="player"></div>
+<div id="added">Adicionada por <b id="addedBy"></b></div>
 <div id="idle">Fila vazia<small>No celular, abra <b id="addr"></b></small></div>
 <script>
   var player = null;
@@ -21,6 +24,7 @@
   var loadedPlayId = null;
   var last = null;
   var idle = document.getElementById('idle');
+  var added = document.getElementById('added');
   document.getElementById('addr').textContent = 'http://' + location.host;
 
   function post(path, body) {
@@ -33,6 +37,8 @@
     if (!ready) return;
     var item = s.queue[s.index];
     idle.style.display = item ? 'none' : 'flex';
+    added.style.display = item && item.addedBy ? 'block' : 'none';
+    document.getElementById('addedBy').textContent = item && item.addedBy ? item.addedBy : '';
     if (!item) {
       if (loadedPlayId !== null) player.stopVideo();
       loadedPlayId = null;
