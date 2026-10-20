@@ -18,6 +18,7 @@
   button:active { transform: scale(.96); }
   button:disabled { opacity: .4; }
   h1 { font-size: 22px; margin: 16px 0 4px; overflow-wrap: anywhere; }
+  h2 { font-size: 17px; margin: 32px 0 8px; }
   p { margin: 0; }
   .muted { color: var(--muted); }
   .by { color: var(--accent); font-size: 14px; margin-top: 4px; }
@@ -30,20 +31,39 @@
   #art { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 16px; background: var(--card); }
   .bar { height: 4px; background: var(--line); border-radius: 2px; margin: 16px 0; overflow: hidden; }
   #progress { height: 100%; width: 0; background: var(--accent); transition: width 1s linear; }
+  svg { fill: currentColor; }
   .votes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .votes button { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 16px; font-size: 20px;
                   font-variant-numeric: tabular-nums; }
-  .votes svg { width: 28px; height: 28px; fill: currentColor; }
-  #like[aria-pressed=true] { background: #12301d; border-color: var(--like); color: var(--like); }
-  #dislike[aria-pressed=true] { background: #3a1416; border-color: var(--accent); color: var(--accent); }
+  .votes svg { width: 28px; height: 28px; }
+  [data-vote="1"][aria-pressed=true] { background: #12301d; border-color: var(--like); color: var(--like); }
+  [data-vote="-1"][aria-pressed=true] { background: #3a1416; border-color: var(--accent); color: var(--accent); }
   .me { margin-top: 20px; text-align: center; font-size: 14px; }
   .link { background: none; border: none; padding: 0; color: var(--text); text-decoration: underline; }
+  ol { list-style: none; padding: 0; margin: 0; }
+  li { display: flex; gap: 10px; align-items: center; padding: 8px 4px; border-bottom: 1px solid var(--line); }
+  li.current { background: #26181a; border-radius: 8px; }
+  li.current b { color: var(--accent); }
+  li img { width: 48px; height: 36px; object-fit: cover; border-radius: 4px; flex: none; background: var(--card); }
+  .meta { min-width: 0; flex: 1; font-size: 15px; }
+  .meta b, .meta span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .meta span { color: var(--muted); font-size: 13px; }
+  .meta .by { color: var(--accent); margin: 0; }
+  .mini { display: flex; gap: 6px; flex: none; }
+  .mini button { display: flex; align-items: center; gap: 4px; padding: 6px 8px; border-radius: 10px; font-size: 13px;
+                 font-variant-numeric: tabular-nums; }
+  .mini svg { width: 18px; height: 18px; }
 </style>
 </head>
 <body>
+<svg style="display:none">
+  <symbol id="i-like" viewBox="0 0 24 24"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></symbol>
+  <symbol id="i-dislike" viewBox="0 0 24 24"><path d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v2c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z"/></symbol>
+</svg>
+
 <form id="join" hidden>
   <h1>Bora votar nas músicas</h1>
-  <p class="muted">Diga seu nome para curtir ou não curtir o que está tocando na TV.</p>
+  <p class="muted">Diga seu nome para curtir ou não curtir as músicas da fila.</p>
   <input name="name" required maxlength="40" autocomplete="given-name" placeholder="Seu nome">
   <button>Entrar</button>
 </form>
@@ -54,18 +74,25 @@
   <p id="artist" class="muted"></p>
   <p id="addedBy" class="by"></p>
   <div class="bar"><div id="progress"></div></div>
-  <div class="votes">
-    <button id="like" aria-label="Curtir" aria-pressed="false">
-      <svg viewBox="0 0 24 24"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>
-      <span id="likes">0</span>
-    </button>
-    <button id="dislike" aria-label="Não curtir" aria-pressed="false">
-      <svg viewBox="0 0 24 24"><path d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v2c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z"/></svg>
-      <span id="dislikes">0</span>
-    </button>
+  <div id="current" class="votes">
+    <button data-vote="1" aria-label="Curtir" aria-pressed="false"><svg><use href="#i-like"/></svg><span class="n">0</span></button>
+    <button data-vote="-1" aria-label="Não curtir" aria-pressed="false"><svg><use href="#i-dislike"/></svg><span class="n">0</span></button>
   </div>
   <p class="me muted">Votando como <b id="me"></b> · <button id="change" class="link">trocar</button></p>
+  <h2>Fila <span id="count" class="muted"></span></h2>
+  <ol id="queue"></ol>
 </main>
+
+<template id="row">
+  <li>
+    <img loading="lazy" alt="">
+    <div class="meta"><b></b><span></span><span class="by"></span></div>
+    <div class="mini">
+      <button data-vote="1" aria-label="Curtir"><svg><use href="#i-like"/></svg><span class="n"></span></button>
+      <button data-vote="-1" aria-label="Não curtir"><svg><use href="#i-dislike"/></svg><span class="n"></span></button>
+    </div>
+  </li>
+</template>
 
 <script>
   const $ = (id) => document.getElementById(id);
@@ -73,8 +100,21 @@
   let state = null;
   let name = localStorage.getItem('name') ?? '';
 
-  function myVote() {
-    return state && state.votes ? state.votes.voters[voterKey(name)] ?? 0 : 0;
+  function myVote(id) {
+    const voters = state.votes[id] ?? {};
+    const key = voterKey(name);
+    return Object.hasOwn(voters, key) ? voters[key] : 0;
+  }
+
+  // Botões de curtir e não curtir de uma música: contagem e o voto de quem está usando.
+  function paintVotes(box, id) {
+    box.dataset.id = id;
+    const values = Object.values(state.votes[id] ?? {});
+    for (const button of box.querySelectorAll('[data-vote]')) {
+      const value = Number(button.dataset.vote);
+      button.querySelector('.n').textContent = values.filter((v) => v === value).length;
+      button.setAttribute('aria-pressed', myVote(id) === value);
+    }
   }
 
   function showScreen() {
@@ -88,6 +128,20 @@
     $('progress').style.width = duration ? `${Math.min(100, (time / duration) * 100)}%` : '0';
   }
 
+  function renderQueue(s) {
+    $('count').textContent = s.queue.length ? `· ${s.queue.length} músicas` : '';
+    $('queue').replaceChildren(...s.queue.map((item, i) => {
+      const li = $('row').content.firstElementChild.cloneNode(true);
+      li.classList.toggle('current', i === s.index);
+      li.querySelector('img').src = `https://i.ytimg.com/vi/${item.id}/mqdefault.jpg`;
+      li.querySelector('b').textContent = item.title;
+      li.querySelector('span').textContent = item.artist;
+      li.querySelector('.by').textContent = item.addedBy ? `por ${item.addedBy}` : '';
+      paintVotes(li.querySelector('.mini'), item.id);
+      return li;
+    }));
+  }
+
   function render(s) {
     state = s;
     const item = s.queue[s.index];
@@ -96,27 +150,26 @@
     $('title').textContent = item ? item.title : 'Nada tocando';
     $('artist').textContent = item ? item.artist : '';
     $('addedBy').textContent = item && item.addedBy ? `Adicionada por ${item.addedBy}` : '';
-    $('likes').textContent = s.votes ? s.votes.likes : 0;
-    $('dislikes').textContent = s.votes ? s.votes.dislikes : 0;
-    $('like').setAttribute('aria-pressed', myVote() === 1);
-    $('dislike').setAttribute('aria-pressed', myVote() === -1);
-    $('like').disabled = $('dislike').disabled = !item;
+    paintVotes($('current'), item ? item.id : '');
+    $('current').querySelectorAll('button').forEach((b) => { b.disabled = !item; });
     progress(s);
+    renderQueue(s);
   }
 
-  async function vote(value) {
-    const item = state.queue[state.index];
+  async function vote(id, value) {
     const res = await fetch('/vote', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       // tocar no voto que já está marcado desfaz o voto
-      body: JSON.stringify({ name, id: item.id, value: myVote() === value ? 0 : value }),
+      body: JSON.stringify({ name, id, value: myVote(id) === value ? 0 : value }),
     });
     if (!res.ok) alert(await res.text());
   }
 
-  $('like').addEventListener('click', () => vote(1));
-  $('dislike').addEventListener('click', () => vote(-1));
+  document.addEventListener('click', (e) => {
+    const button = e.target.closest('[data-vote]');
+    if (button) vote(button.closest('[data-id]').dataset.id, Number(button.dataset.vote));
+  });
 
   $('join').addEventListener('submit', (e) => {
     e.preventDefault();

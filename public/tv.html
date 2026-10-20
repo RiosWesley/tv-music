@@ -10,13 +10,32 @@
   #idle { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column;
           align-items: center; justify-content: center; text-align: center; font-size: 44px; background: #0f0f0f; }
   #idle small { font-size: 30px; opacity: .7; margin-top: 16px; }
-  #added { position: fixed; left: 0; right: 0; bottom: 0; padding: 80px 72px 48px; font-size: 36px; display: none;
-           background: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, .8)); text-shadow: 0 2px 8px #000; pointer-events: none; }
+  #footer { position: fixed; left: 0; right: 0; bottom: 0; padding: 80px 72px 48px; font-size: 36px; display: none;
+            align-items: center; background: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, .8));
+            text-shadow: 0 2px 8px #000; pointer-events: none; }
+  .votes { margin-left: auto; display: flex; align-items: center; }
+  .votes svg { width: 40px; height: 40px; margin: 0 12px 0 36px; fill: #fff; }
+  #toast { position: fixed; top: 48px; right: 72px; max-width: 900px; display: flex; align-items: center; padding: 24px 36px;
+           border-radius: 24px; background: rgba(20, 20, 20, .92); font-size: 34px; opacity: 0; transform: translateY(-24px);
+           transition: opacity .3s, transform .3s; pointer-events: none; }
+  #toast.show { opacity: 1; transform: none; }
+  #toast svg { width: 56px; height: 56px; flex: none; margin-right: 24px; fill: #4ade80; }
+  #toast.dislike svg { fill: #ff3b3b; }
+  #toast div { min-width: 0; }
+  #toast small { display: block; font-size: 26px; opacity: .7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>
 </head>
 <body>
+<svg style="display:none">
+  <symbol id="i-like" viewBox="0 0 24 24"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></symbol>
+  <symbol id="i-dislike" viewBox="0 0 24 24"><path d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v2c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z"/></symbol>
+</svg>
 <div id="player"></div>
-<div id="added">Adicionada por <b id="addedBy"></b></div>
+<div id="footer">
+  <span id="added">Adicionada por <b id="addedBy"></b></span>
+  <span class="votes"><svg><use href="#i-like"/></svg><b id="likes">0</b><svg><use href="#i-dislike"/></svg><b id="dislikes">0</b></span>
+</div>
+<div id="toast"><svg><use id="toastIcon" href="#i-like"/></svg><div><b id="toastName"></b> <span id="toastAction"></span><small id="toastSong"></small></div></div>
 <div id="idle">Fila vazia<small>No celular, abra <b id="addr"></b></small></div>
 <script>
   var player = null;
@@ -24,8 +43,28 @@
   var loadedPlayId = null;
   var last = null;
   var idle = document.getElementById('idle');
-  var added = document.getElementById('added');
+  var footer = document.getElementById('footer');
+  var toastTimer = null;
   document.getElementById('addr').textContent = 'http://' + location.host;
+
+  function countVotes(voters, value) {
+    var n = 0;
+    for (var key in voters) if (Object.prototype.hasOwnProperty.call(voters, key) && voters[key] === value) n++;
+    return n;
+  }
+
+  // Alerta no canto quando alguém vota pela página de ouvinte.
+  function toast(vote) {
+    var el = document.getElementById('toast');
+    el.classList.toggle('dislike', vote.value === -1);
+    document.getElementById('toastIcon').setAttribute('href', vote.value === 1 ? '#i-like' : '#i-dislike');
+    document.getElementById('toastName').textContent = vote.name;
+    document.getElementById('toastAction').textContent = vote.value === 1 ? 'curtiu' : 'não curtiu';
+    document.getElementById('toastSong').textContent = vote.title;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.classList.remove('show'); }, 5000);
+  }
 
   function post(path, body) {
     fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -37,8 +76,12 @@
     if (!ready) return;
     var item = s.queue[s.index];
     idle.style.display = item ? 'none' : 'flex';
-    added.style.display = item && item.addedBy ? 'block' : 'none';
+    footer.style.display = item ? 'flex' : 'none';
+    document.getElementById('added').style.display = item && item.addedBy ? 'inline' : 'none';
     document.getElementById('addedBy').textContent = item && item.addedBy ? item.addedBy : '';
+    var voters = item && s.votes[item.id] || {};
+    document.getElementById('likes').textContent = countVotes(voters, 1);
+    document.getElementById('dislikes').textContent = countVotes(voters, -1);
     if (!item) {
       if (loadedPlayId !== null) player.stopVideo();
       loadedPlayId = null;
@@ -92,6 +135,7 @@
   var events = new EventSource('/events?role=tv');
   events.addEventListener('state', function (e) { apply(JSON.parse(e.data)); });
   events.addEventListener('seek', function (e) { if (ready) player.seekTo(JSON.parse(e.data), true); });
+  events.addEventListener('vote', function (e) { toast(JSON.parse(e.data)); });
 
   // O PC reabriu o app (iniciar.bat ou botão no celular): vai para o servidor informado, que pode ter mudado de IP.
   document.addEventListener('webOSRelaunch', function () {

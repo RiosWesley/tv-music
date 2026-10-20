@@ -23,10 +23,9 @@ function send(res, event, data) {
   res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 }
 
-// O que as telas recebem: o estado salvo mais o placar da música atual.
+// O que as telas recebem: o estado salvo mais os votos de todas as músicas (só as votadas aparecem).
 function snapshot() {
-  const item = state.queue[state.index];
-  return { ...state, votes: item ? votes.tally(item.id) : null };
+  return { ...state, votes: votes.toJSON() };
 }
 
 function emit(event = 'state', data = snapshot()) {
@@ -121,9 +120,11 @@ http
         res.writeHead(204).end();
       } else if (req.method === 'POST' && pathname === '/vote') {
         const body = await readJson(req);
-        if (!state.queue.some((item) => item.id === body.id)) throw new Error('Essa música não está na fila');
+        const item = state.queue.find((q) => q.id === body.id);
+        if (!item) throw new Error('Essa música não está na fila');
         votes.vote(body);
         writeFileSync(VOTES_FILE, JSON.stringify(votes));
+        if (body.value) emit('vote', { name: String(body.name).trim(), value: body.value, title: item.title });
         emit();
         res.writeHead(204).end();
       } else if (req.method === 'POST' && pathname === '/open-tv') {
