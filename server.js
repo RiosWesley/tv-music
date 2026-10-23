@@ -23,9 +23,9 @@ function send(res, event, data) {
   res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 }
 
-// O que as telas recebem: o estado salvo mais os votos de todas as músicas (só as votadas aparecem).
+// O que as telas recebem: o estado salvo, os índices das próximas e os votos de todas as músicas (só as votadas aparecem).
 function snapshot() {
-  return { ...state, votes: votes.toJSON() };
+  return { ...state, upcoming: player.upcoming(), votes: votes.toJSON() };
 }
 
 function emit(event = 'state', data = snapshot()) {

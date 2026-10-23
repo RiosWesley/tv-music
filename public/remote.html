@@ -41,6 +41,8 @@
   form button[value=replace] { background: var(--accent); border-color: var(--accent); color: #fff; }
   #error { grid-column: 1 / -1; color: var(--accent); font-size: 13px; margin: 0; }
   #error:empty { display: none; }
+  h2 { font-size: 15px; margin: 8px 0 4px; }
+  summary { padding: 16px 4px; cursor: pointer; font-weight: 600; }
   ol { list-style: none; padding: 0; margin: 0; }
   li { display: flex; gap: 10px; align-items: center; padding: 8px 4px; border-bottom: 1px solid var(--line); }
   li.current { background: #26181a; border-radius: 8px; }
@@ -88,8 +90,12 @@
   <p id="error"></p>
 </form>
 
-<p class="muted" id="count"></p>
-<ol id="queue"></ol>
+<h2>Próximas</h2>
+<ol id="upcoming"></ol>
+<details>
+  <summary>Fila completa <span id="count" class="muted"></span></summary>
+  <ol id="queue"></ol>
+</details>
 
 <script>
   const $ = (id) => document.getElementById(id);
@@ -126,22 +132,26 @@
     $('smart').setAttribute('aria-pressed', s.smartShuffle);
     if (document.activeElement !== $('volume')) $('volume').value = s.volume;
     progress(s);
-    $('count').textContent = s.queue.length ? `${s.queue.length} músicas na fila` : '';
+    $('count').textContent = s.queue.length ? `· ${s.queue.length} músicas` : '';
+    $('upcoming').replaceChildren(...s.upcoming.map((i) => queueRow(s, i)));
+    $('queue').replaceChildren(...s.queue.map((_, i) => queueRow(s, i)));
+  }
 
-    const tpl = document.createElement('template');
-    tpl.innerHTML = `<li><img loading="lazy" alt=""><div class="meta" data-act="play"><b class="t"></b><span></span><span class="by"></span></div>
-      <button data-act="playNext" aria-label="Tocar a seguir"><svg><use href="#i-next-up"/></svg></button>
-      <button data-act="remove" aria-label="Remover"><svg><use href="#i-remove"/></svg></button></li>`;
-    $('queue').replaceChildren(...s.queue.map((q, i) => {
-      const li = tpl.content.firstElementChild.cloneNode(true);
-      li.dataset.index = i;
-      li.classList.toggle('current', i === s.index);
-      li.querySelector('img').src = thumb(q.id);
-      li.querySelector('b').textContent = q.title;
-      li.querySelector('span').textContent = [q.artist, q.duration ? fmt(q.duration) : ''].filter(Boolean).join(' · ');
-      li.querySelector('.by').textContent = q.addedBy ? `por ${q.addedBy}` : '';
-      return li;
-    }));
+  const row = document.createElement('template');
+  row.innerHTML = `<li><img loading="lazy" alt=""><div class="meta" data-act="play"><b class="t"></b><span></span><span class="by"></span></div>
+    <button data-act="playNext" aria-label="Tocar a seguir"><svg><use href="#i-next-up"/></svg></button>
+    <button data-act="remove" aria-label="Remover"><svg><use href="#i-remove"/></svg></button></li>`;
+
+  function queueRow(s, i) {
+    const q = s.queue[i];
+    const li = row.content.firstElementChild.cloneNode(true);
+    li.dataset.index = i;
+    li.classList.toggle('current', i === s.index);
+    li.querySelector('img').src = thumb(q.id);
+    li.querySelector('b').textContent = q.title;
+    li.querySelector('span').textContent = [q.artist, q.duration ? fmt(q.duration) : ''].filter(Boolean).join(' · ');
+    li.querySelector('.by').textContent = q.addedBy ? `por ${q.addedBy}` : '';
+    return li;
   }
 
   const events = new EventSource('/events');
@@ -163,11 +173,13 @@
   $('seek').addEventListener('change', () => { dragging = false; run({ type: 'seek', time: Number($('seek').value) }); });
   $('volume').addEventListener('change', () => run({ type: 'volume', value: Number($('volume').value) }));
 
-  $('queue').addEventListener('click', (e) => {
-    const target = e.target.closest('[data-act]');
-    if (!target) return;
-    run({ type: target.dataset.act, index: Number(target.closest('li').dataset.index) });
-  });
+  for (const list of [$('upcoming'), $('queue')]) {
+    list.addEventListener('click', (e) => {
+      const target = e.target.closest('[data-act]');
+      if (!target) return;
+      run({ type: target.dataset.act, index: Number(target.closest('li').dataset.index) });
+    });
+  }
 
   $('load').addEventListener('submit', async (e) => {
     e.preventDefault();

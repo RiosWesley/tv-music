@@ -13,6 +13,8 @@
   #footer { position: fixed; left: 0; right: 0; bottom: 0; padding: 80px 72px 48px; font-size: 36px; display: none;
             align-items: center; background: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, .8));
             text-shadow: 0 2px 8px #000; pointer-events: none; }
+  .info { min-width: 0; }
+  #next { display: block; margin-top: 8px; font-size: 28px; opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .votes { margin-left: auto; display: flex; align-items: center; }
   .votes svg { width: 40px; height: 40px; margin: 0 12px 0 36px; fill: #fff; }
   #toast { position: fixed; top: 48px; right: 72px; max-width: 900px; display: flex; align-items: center; padding: 24px 36px;
@@ -32,7 +34,7 @@
 </svg>
 <div id="player"></div>
 <div id="footer">
-  <span id="added">Adicionada por <b id="addedBy"></b></span>
+  <div class="info"><span id="added">Adicionada por <b id="addedBy"></b></span><small id="next"></small></div>
   <span class="votes"><svg><use href="#i-like"/></svg><b id="likes">0</b><svg><use href="#i-dislike"/></svg><b id="dislikes">0</b></span>
 </div>
 <div id="toast"><svg><use id="toastIcon" href="#i-like"/></svg><div><b id="toastName"></b> <span id="toastAction"></span><small id="toastSong"></small></div></div>
@@ -79,6 +81,8 @@
     footer.style.display = item ? 'flex' : 'none';
     document.getElementById('added').style.display = item && item.addedBy ? 'inline' : 'none';
     document.getElementById('addedBy').textContent = item && item.addedBy ? item.addedBy : '';
+    var next = s.upcoming.length ? s.queue[s.upcoming[0]] : null;
+    document.getElementById('next').textContent = next ? 'A seguir: ' + next.title : '';
     var voters = item && s.votes[item.id] || {};
     document.getElementById('likes').textContent = countVotes(voters, 1);
     document.getElementById('dislikes').textContent = countVotes(voters, -1);

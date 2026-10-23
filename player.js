@@ -9,11 +9,12 @@ export const initialState = () => ({
   tv: false,
   smartShuffle: false,
   history: [], // IDs do que tocou antes da atual, para "voltar" e para o aleatório 2.0 não repetir
-  upNext: [], // IDs pedidos com "tocar a seguir", que furam o sorteio do aleatório 2.0
+  upNext: [], // aleatório 2.0: IDs que vão tocar, em ordem (os de "tocar a seguir" na frente, depois os já sorteados)
 });
 
 const HISTORY_SIZE = 100;
 const NO_REPEAT = 30;
+const UPCOMING = 10;
 
 // Regras da fila. O estado é a fonte da verdade: a TV só reflete. playId muda sempre que uma faixa deve (re)começar.
 // weights(ids) devolve o peso de cada música no aleatório 2.0.
@@ -26,6 +27,7 @@ export function createPlayer(state, weights) {
     state.playId++;
     state.time = 0;
     state.duration = state.queue[state.index].duration;
+    refill();
   }
 
   // Troca de faixa lembrando a atual, para "voltar" refazer o caminho que realmente tocou.
@@ -37,24 +39,43 @@ export function createPlayer(state, weights) {
 
   const indexOf = (id) => state.queue.findIndex((item) => item.id === id);
 
-  // Aleatório 2.0: sorteia pelo peso dos votos, sem repetir as últimas tocadas (até 30, ou metade da fila).
+  // Aleatório 2.0: sorteia pelo peso dos votos, sem repetir nenhuma das últimas tocadas ou já sorteadas
+  // (até 30, ou metade da fila). -1 quando não há candidata (fila vazia ou só com IDs repetidos).
   function draw() {
-    const played = [...state.history, state.queue[state.index]?.id];
+    const planned = [...state.history, state.queue[state.index]?.id, ...state.upNext];
     const noRepeat = Math.min(NO_REPEAT, Math.floor(state.queue.length / 2));
-    const recent = new Set(played.slice(Math.max(0, played.length - noRepeat)));
+    const recent = new Set(planned.slice(Math.max(0, planned.length - noRepeat)));
     const weight = weights(state.queue.map((item) => item.id));
     const candidates = state.queue.map((_, i) => i).filter((i) => !recent.has(state.queue[i].id));
-    if (!candidates.length) return state.index + 1; // só IDs repetidos na fila
+    if (!candidates.length) return -1;
     let roll = Math.random() * candidates.reduce((sum, i) => sum + weight[i], 0);
     return candidates.find((i) => (roll -= weight[i]) < 0) ?? candidates.at(-1);
   }
 
-  function nextIndex() {
-    while (state.upNext.length) {
-      const index = indexOf(state.upNext.shift());
-      if (index >= 0 && index !== state.index) return index;
+  // Aleatório 2.0: deixa as próximas sorteadas com antecedência, para a fila mostrar o que vai tocar de verdade.
+  function refill() {
+    if (!state.smartShuffle) return;
+    const current = state.queue[state.index]?.id;
+    state.upNext = state.upNext.filter((id) => id !== current && indexOf(id) >= 0);
+    while (state.upNext.length < UPCOMING) {
+      const index = draw();
+      if (index < 0) break;
+      state.upNext.push(state.queue[index].id);
     }
-    return state.smartShuffle ? draw() : state.index + 1;
+  }
+
+  function nextIndex() {
+    if (!state.smartShuffle) return state.index + 1;
+    refill();
+    const id = state.upNext.shift();
+    return id === undefined ? state.index + 1 : indexOf(id);
+  }
+
+  // Índices das próximas músicas, na ordem em que vão tocar.
+  function upcoming() {
+    if (state.smartShuffle) return state.upNext.map(indexOf).filter((i) => i >= 0);
+    const count = Math.max(0, Math.min(UPCOMING, state.queue.length - 1));
+    return Array.from({ length: count }, (_, k) => (state.index + 1 + k) % state.queue.length);
   }
 
   function checkIndex(index) {
@@ -65,11 +86,15 @@ export function createPlayer(state, weights) {
   function load(items, mode) {
     if (!items.length) throw new Error('Playlist vazia ou privada');
     const wasEmpty = !state.queue.length;
-    if (mode === 'append') state.queue.push(...items);
-    else state.queue = items;
+    if (mode === 'append') {
+      state.queue.push(...items);
+    } else {
+      state.queue = items;
+      state.upNext = [];
+    }
     if (mode !== 'append' || wasEmpty) {
       state.paused = false;
-      startTrack(state.smartShuffle ? draw() : 0);
+      startTrack(state.smartShuffle ? nextIndex() : 0);
     }
   }
 
@@ -85,8 +110,10 @@ export function createPlayer(state, weights) {
     prev() {
       state.paused = false;
       if (state.time > 5) return startTrack(state.index);
+      const current = state.queue[state.index];
       let index = -1;
       while (index < 0 && state.history.length) index = indexOf(state.history.pop());
+      if (state.smartShuffle && current) state.upNext.unshift(current.id); // "próxima" volta para onde estava
       startTrack(index >= 0 ? index : state.index - 1);
     },
     pause({ value }) {
@@ -111,6 +138,8 @@ export function createPlayer(state, weights) {
     },
     smartShuffle({ value }) {
       state.smartShuffle = Boolean(value);
+      state.upNext = [];
+      refill();
     },
     remove({ index }) {
       checkIndex(index);
@@ -118,6 +147,7 @@ export function createPlayer(state, weights) {
       state.queue.splice(index, 1);
       if (!state.queue.length) state.index = 0;
       else if (index < state.index) state.index--;
+      refill(); // se era uma das sorteadas, sorteia outra no lugar
     },
     playNext({ index }) {
       checkIndex(index);
@@ -125,9 +155,11 @@ export function createPlayer(state, weights) {
       const [item] = state.queue.splice(index, 1);
       if (index < state.index) state.index--;
       state.queue.splice(state.index + 1, 0, item);
-      state.upNext.unshift(item.id);
+      if (state.smartShuffle) state.upNext = [item.id, ...state.upNext.filter((id) => id !== item.id)];
     },
   };
+
+  refill(); // estado salvo por uma versão sem as próximas sorteadas
 
   // Relatórios da TV. Retorna o evento a transmitir. playId descarta relatórios atrasados de faixas anteriores.
   function report({ type, playId, time, duration, playing }) {
@@ -146,5 +178,5 @@ export function createPlayer(state, weights) {
     return 'state';
   }
 
-  return { load, commands, report };
+  return { load, commands, report, upcoming };
 }

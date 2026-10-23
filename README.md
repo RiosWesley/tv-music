@@ -13,12 +13,12 @@ Toca playlists do YouTube Music na TV LG (webOS) com a fila inteira, controlada 
 
 O servidor acha a TV na rede, descobre o IP atual do PC e abre o app na TV já apontando para ele. A janela mostra os endereços:
 
-- `http://<ip-do-pc>:8080` é o controle completo (fila, pular, volume).
-- `http://<ip-do-pc>:8080/ouvinte` é para quem só quer ver o que está tocando e a fila, e curtir ou não curtir qualquer música dela. Pede um nome antes de votar; cada nome tem um voto por música. A TV mostra as contagens da música atual e um alerta a cada voto.
+- `http://<ip-do-pc>:8080` é o controle completo (as próximas 10, a fila completa num menu recolhido, pular, volume).
+- `http://<ip-do-pc>:8080/ouvinte` é para quem só quer ver o que está tocando, as próximas 10 e, num menu recolhido, as que já tocaram, e curtir ou não curtir essas músicas. Pede um nome antes de votar; cada nome tem um voto por música. A TV mostra a próxima, as contagens da música atual e um alerta a cada voto.
 
 Os votos ficam em `votes.json`, na pasta do projeto do PC que roda o servidor. São gravados na hora, por ID do vídeo, então valem mesmo se a playlist for recarregada. Não vão para o GitHub: ao trocar de PC, copie o `votes.json` junto com o `.env`.
 
-**Aleatório 2.0** (botão ao lado do volume): a cada música, sorteia a próxima dando mais chance às mais curtidas. Peso 1 para quem não tem votos, até 1,5 para a de maior saldo (curtidas − não curtidas) e até 0,5 para a de pior saldo. Não repete as últimas 30 tocadas (ou metade da fila, se for menor). "Tocar a seguir" fura o sorteio, e "voltar" volta para a que tocou antes de verdade.
+**Aleatório 2.0** (botão ao lado do volume): sorteia as músicas dando mais chance às mais curtidas. Peso 1 para quem não tem votos, até 1,5 para a de maior saldo (curtidas − não curtidas) e até 0,5 para a de pior saldo. As próximas 10 ficam sorteadas com antecedência e são elas que aparecem em "Próximas", então um voto vale para os sorteios depois delas. Não repete as últimas 30 (ou metade da fila, se for menor). "Tocar a seguir" fura o sorteio, e "voltar" volta para a que tocou antes de verdade.
 
 Se a TV estava desligada, ligue-a e toque em **Abrir na TV** no celular. Abrir o app pelo controle remoto também funciona, enquanto o IP do PC não mudar.
 

@@ -42,8 +42,7 @@
   .link { background: none; border: none; padding: 0; color: var(--text); text-decoration: underline; }
   ol { list-style: none; padding: 0; margin: 0; }
   li { display: flex; gap: 10px; align-items: center; padding: 8px 4px; border-bottom: 1px solid var(--line); }
-  li.current { background: #26181a; border-radius: 8px; }
-  li.current b { color: var(--accent); }
+  summary { padding: 20px 0 8px; cursor: pointer; font-size: 17px; font-weight: 700; }
   li img { width: 48px; height: 36px; object-fit: cover; border-radius: 4px; flex: none; background: var(--card); }
   .meta { min-width: 0; flex: 1; font-size: 15px; }
   .meta b, .meta span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -63,7 +62,7 @@
 
 <form id="join" hidden>
   <h1>Bora votar nas músicas</h1>
-  <p class="muted">Diga seu nome para curtir ou não curtir as músicas da fila.</p>
+  <p class="muted">Diga seu nome para curtir ou não curtir as músicas.</p>
   <input name="name" required maxlength="40" autocomplete="given-name" placeholder="Seu nome">
   <button>Entrar</button>
 </form>
@@ -79,8 +78,12 @@
     <button data-vote="-1" aria-label="Não curtir" aria-pressed="false"><svg><use href="#i-dislike"/></svg><span class="n">0</span></button>
   </div>
   <p class="me muted">Votando como <b id="me"></b> · <button id="change" class="link">trocar</button></p>
-  <h2>Fila <span id="count" class="muted"></span></h2>
-  <ol id="queue"></ol>
+  <h2>Próximas</h2>
+  <ol id="upcoming"></ol>
+  <details>
+    <summary>Já tocou <span id="playedCount" class="muted"></span></summary>
+    <ol id="played"></ol>
+  </details>
 </main>
 
 <template id="row">
@@ -128,18 +131,28 @@
     $('progress').style.width = duration ? `${Math.min(100, (time / duration) * 100)}%` : '0';
   }
 
-  function renderQueue(s) {
-    $('count').textContent = s.queue.length ? `· ${s.queue.length} músicas` : '';
-    $('queue').replaceChildren(...s.queue.map((item, i) => {
-      const li = $('row').content.firstElementChild.cloneNode(true);
-      li.classList.toggle('current', i === s.index);
-      li.querySelector('img').src = `https://i.ytimg.com/vi/${item.id}/mqdefault.jpg`;
-      li.querySelector('b').textContent = item.title;
-      li.querySelector('span').textContent = item.artist;
-      li.querySelector('.by').textContent = item.addedBy ? `por ${item.addedBy}` : '';
-      paintVotes(li.querySelector('.mini'), item.id);
-      return li;
-    }));
+  function songRow(item) {
+    const li = $('row').content.firstElementChild.cloneNode(true);
+    li.querySelector('img').src = `https://i.ytimg.com/vi/${item.id}/mqdefault.jpg`;
+    li.querySelector('b').textContent = item.title;
+    li.querySelector('span').textContent = item.artist;
+    li.querySelector('.by').textContent = item.addedBy ? `por ${item.addedBy}` : '';
+    paintVotes(li.querySelector('.mini'), item.id);
+    return li;
+  }
+
+  // Já tocou: a mais recente primeiro, sem repetir, só as que ainda estão na fila.
+  function playedSongs(s) {
+    return [...new Set([...s.history].reverse())]
+      .map((id) => s.queue.find((item) => item.id === id))
+      .filter(Boolean);
+  }
+
+  function renderLists(s) {
+    $('upcoming').replaceChildren(...s.upcoming.map((i) => songRow(s.queue[i])));
+    const played = playedSongs(s);
+    $('playedCount').textContent = played.length ? `· ${played.length}` : '';
+    $('played').replaceChildren(...played.map(songRow));
   }
 
   function render(s) {
@@ -153,7 +166,7 @@
     paintVotes($('current'), item ? item.id : '');
     $('current').querySelectorAll('button').forEach((b) => { b.disabled = !item; });
     progress(s);
-    renderQueue(s);
+    renderLists(s);
   }
 
   async function vote(id, value) {

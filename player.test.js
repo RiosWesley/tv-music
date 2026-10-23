@@ -75,6 +75,27 @@ test('aleatório 2.0 sorteia pelo peso e não repete as últimas tocadas', () =>
   played.forEach((id, k) => assert.ok(!played.slice(Math.max(0, k - 5), k).includes(id), `repetiu ${id} na posição ${k}`));
 });
 
+test('aleatório 2.0 deixa as próximas 10 sorteadas, toca nessa ordem e repõe as que saem', () => {
+  const ids = Array.from({ length: 40 }, (_, i) => `s${i}`);
+  const queue = setup(ids);
+  const upcomingIds = () => queue.player.upcoming().map((i) => queue.state.queue[i].id);
+  queue.player.commands.smartShuffle({ value: true });
+  const before = upcomingIds();
+  assert.equal(new Set(before).size, 10);
+  end(queue);
+  assert.equal(queue.current(), before[0]);
+  assert.deepEqual(upcomingIds().slice(0, 9), before.slice(1));
+  assert.equal(upcomingIds().length, 10);
+
+  const removed = upcomingIds()[2];
+  queue.player.commands.remove({ index: queue.state.queue.findIndex((item) => item.id === removed) });
+  assert.ok(!upcomingIds().includes(removed));
+  assert.equal(upcomingIds().length, 10);
+
+  queue.player.commands.smartShuffle({ value: false });
+  assert.deepEqual(queue.player.upcoming(), Array.from({ length: 10 }, (_, k) => (queue.state.index + 1 + k) % 39));
+});
+
 test('no aleatório 2.0, voltar refaz o caminho que tocou e tocar a seguir fura o sorteio', () => {
   const queue = setup(['a', 'b', 'c', 'd', 'e', 'f']);
   queue.player.commands.smartShuffle({ value: true });
