@@ -10,7 +10,8 @@ import { createVotes } from './votes.js';
 const PORT = Number(process.env.PORT ?? 8080);
 const STATE_FILE = join(import.meta.dirname, 'state.json');
 const VOTES_FILE = join(import.meta.dirname, 'votes.json');
-const PAGES = { '/': 'remote.html', '/ouvinte': 'listener.html', '/tv': 'tv.html' };
+const PLAYLIST = process.env.PLAYLIST_URL ?? 'https://music.youtube.com/playlist?list=PLC-gCDkn8ImfQf_gzGn_2uZ982kRdQPdj';
+const PAGES ={ '/': 'remote.html', '/ouvinte': 'listener.html', '/tv': 'tv.html' };
 
 // Campos novos ficam com o valor inicial quando o state.json é de uma versão anterior.
 const state = { ...initialState(), ...(existsSync(STATE_FILE) ? JSON.parse(readFileSync(STATE_FILE, 'utf8')) : {}) };
@@ -43,7 +44,7 @@ async function readJson(req) {
 }
 
 async function runCommand(body) {
-  if (body.type === 'load') player.load(await resolve(body.url), body.mode);
+  if (body.type === 'sync') player.sync(await resolve(PLAYLIST));
   else if (Object.hasOwn(player.commands, body.type)) player.commands[body.type](body);
   else throw new Error('Comando desconhecido');
   if (body.type === 'seek') emit('seek', state.time);
@@ -153,5 +154,6 @@ http
       .filter((a) => a.family === 'IPv4' && !a.internal)
       .map((a) => `http://${a.address}:${PORT}`);
     console.log(`TV Music rodando. No celular: ${urls.join('  ou  ')}`);
+    runCommand({ type: 'sync' }).catch((e) => console.error(`Não atualizei a playlist (${e.message}).`));
     openTv().catch((e) => console.error(`Não abri o app na TV (${e.message}). Ligue a TV e toque em "Abrir na TV" no celular.`));
   });

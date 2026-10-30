@@ -12,8 +12,7 @@ export const initialState = () => ({
   upNext: [], // aleatório 2.0: IDs que vão tocar, em ordem (os de "tocar a seguir" na frente, depois os já sorteados)
 });
 
-const HISTORY_SIZE = 100;
-const NO_REPEAT = 30;
+const HISTORY_SIZE = 1000;
 const UPCOMING = 10;
 
 // Regras da fila. O estado é a fonte da verdade: a TV só reflete. playId muda sempre que uma faixa deve (re)começar.
@@ -40,10 +39,10 @@ export function createPlayer(state, weights) {
   const indexOf = (id) => state.queue.findIndex((item) => item.id === id);
 
   // Aleatório 2.0: sorteia pelo peso dos votos, sem repetir nenhuma das últimas tocadas ou já sorteadas
-  // (até 30, ou metade da fila). -1 quando não há candidata (fila vazia ou só com IDs repetidos).
+  // (metade da fila). -1 quando não há candidata (fila vazia ou só com IDs repetidos).
   function draw() {
     const planned = [...state.history, state.queue[state.index]?.id, ...state.upNext];
-    const noRepeat = Math.min(NO_REPEAT, Math.floor(state.queue.length / 2));
+    const noRepeat = Math.floor(state.queue.length / 2);
     const recent = new Set(planned.slice(Math.max(0, planned.length - noRepeat)));
     const weight = weights(state.queue.map((item) => item.id));
     const candidates = state.queue.map((_, i) => i).filter((i) => !recent.has(state.queue[i].id));
@@ -83,16 +82,19 @@ export function createPlayer(state, weights) {
     return index;
   }
 
-  function load(items, mode) {
+  // Atualiza a fila com a playlist: entram as novas, saem as removidas, duplicadas viram uma só.
+  // A música atual continua tocando e o histórico é mantido, para não repetir o que já tocou.
+  // ponytail: re-sortear perde os "tocar a seguir" pendentes; guarde-os à parte se isso incomodar.
+  function sync(items) {
     if (!items.length) throw new Error('Playlist vazia ou privada');
-    const wasEmpty = !state.queue.length;
-    if (mode === 'append') {
-      state.queue.push(...items);
+    const currentId = state.queue[state.index]?.id;
+    state.queue = [...new Map(items.map((item) => [item.id, item])).values()];
+    state.upNext = []; // re-sorteia as próximas já com as músicas novas
+    const index = indexOf(currentId);
+    if (index >= 0) {
+      state.index = index;
+      refill();
     } else {
-      state.queue = items;
-      state.upNext = [];
-    }
-    if (mode !== 'append' || wasEmpty) {
       state.paused = false;
       startTrack(state.smartShuffle ? nextIndex() : 0);
     }
@@ -178,5 +180,5 @@ export function createPlayer(state, weights) {
     return 'state';
   }
 
-  return { load, commands, report, upcoming };
+  return { sync, commands, report, upcoming };
 }

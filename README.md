@@ -14,11 +14,12 @@ Toca playlists do YouTube Music na TV LG (webOS) com a fila inteira, controlada 
 O servidor acha a TV na rede, descobre o IP atual do PC e abre o app na TV já apontando para ele. A janela mostra os endereços:
 
 - `http://<ip-do-pc>:8080` é o controle completo (as próximas 10, a fila completa num menu recolhido, pular, volume).
+n**Playlist fixa:** o servidor toca sempre a playlist do grupo (troque com `PLAYLIST_URL=<link>` no `.env`). Ela é atualizada quando o servidor sobe e pelo botão **Atualizar playlist**, que traz as músicas novas, tira as removidas e junta as duplicadas sem interromper a atual nem esquecer o que já tocou.
 - `http://<ip-do-pc>:8080/ouvinte` é para quem só quer ver o que está tocando, as próximas 10 e, num menu recolhido, as que já tocaram, e curtir ou não curtir essas músicas. Pede um nome antes de votar; cada nome tem um voto por música. A TV mostra a próxima, as contagens da música atual e um alerta a cada voto.
 
 Os votos ficam em `votes.json`, na pasta do projeto do PC que roda o servidor. São gravados na hora, por ID do vídeo, então valem mesmo se a playlist for recarregada. Não vão para o GitHub: ao trocar de PC, copie o `votes.json` junto com o `.env`.
 
-**Aleatório 2.0** (botão ao lado do volume): sorteia as músicas dando mais chance às mais curtidas. Peso 1 para quem não tem votos, até 1,5 para a de maior saldo (curtidas − não curtidas) e até 0,5 para a de pior saldo. As próximas 10 ficam sorteadas com antecedência e são elas que aparecem em "Próximas", então um voto vale para os sorteios depois delas. Não repete as últimas 30 (ou metade da fila, se for menor). "Tocar a seguir" fura o sorteio, e "voltar" volta para a que tocou antes de verdade.
+**Aleatório 2.0** (botão ao lado do volume): sorteia as músicas dando mais chance às mais curtidas. Peso 1 para quem não tem votos, até 1,5 para a de maior saldo (curtidas − não curtidas) e até 0,5 para a de pior saldo. As próximas 10 ficam sorteadas com antecedência e são elas que aparecem em "Próximas", então um voto vale para os sorteios depois delas. Não repete nenhuma música que tocou na última metade da fila (cerca de 385 músicas numa playlist de 770). "Tocar a seguir" fura o sorteio, e "voltar" volta para a que tocou antes de verdade.
 
 Se a TV estava desligada, ligue-a e toque em **Abrir na TV** no celular. Abrir o app pelo controle remoto também funciona, enquanto o IP do PC não mudar.
 
@@ -69,5 +70,5 @@ OK = tocar/pausar, ◀ ▶ = anterior/próxima. Os botões ⏯ ⏪ ⏩ também f
 
 - O player é o embed oficial do YouTube: pode ter anúncios (sem login Premium) e faixas com incorporação bloqueada são puladas automaticamente (o motivo aparece no log do servidor).
 - O YouTube recusa músicas de gravadora (erro 150) quando a página do player é aberta por IP. Por isso o servidor redireciona `/tv` para `<ip>.nip.io`, um DNS público que devolve o próprio IP. Se o nip.io sair do ar, a TV não abre o player.
-- Playlists privadas, como "Músicas curtidas", não carregam porque não há login. Deixe a playlist como "Não listada" e use o link.
+- Playlists privadas, como "Músicas curtidas", não carregam porque não há login. Deixe a playlist como "Não listada".
 - A fila repete do início quando chega ao fim.

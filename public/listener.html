@@ -141,11 +141,12 @@
     return li;
   }
 
-  // Já tocou: a mais recente primeiro, sem repetir, só as que ainda estão na fila.
+  // Já tocou: as últimas 100, a mais recente primeiro, sem repetir, só as que ainda estão na fila.
   function playedSongs(s) {
     return [...new Set([...s.history].reverse())]
       .map((id) => s.queue.find((item) => item.id === id))
-      .filter(Boolean);
+      .filter(Boolean)
+      .slice(0, 100);
   }
 
   function renderLists(s) {

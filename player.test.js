@@ -8,7 +8,7 @@ const items = (...ids) => ids.map((id) => ({ id, title: id, artist: '', duration
 function setup(ids, weights = (queueIds) => queueIds.map(() => 1)) {
   const state = initialState();
   const player = createPlayer(state, weights);
-  player.load(items(...ids), 'replace');
+  player.sync(items(...ids));
   return { state, player, current: () => state.queue[state.index].id };
 }
 
@@ -52,13 +52,17 @@ test('erros em todas as faixas pausam em vez de pular para sempre', () => {
   assert.equal(state.paused, true);
 });
 
-test('adicionar à fila não interrompe o que está tocando', () => {
-  const { state, player, current } = setup(['a', 'b']);
+test('atualizar a playlist mantém a atual tocando e o histórico, e junta duplicadas', () => {
+  const { state, player, current } = setup(['a', 'b', 'c']);
   player.commands.next();
   const playId = state.playId;
-  player.load(items('c'), 'append');
+  player.sync(items('c', 'b', 'd', 'd'));
   assert.equal(current(), 'b');
   assert.equal(state.playId, playId);
+  assert.deepEqual(state.queue.map((q) => q.id), ['c', 'b', 'd']);
+  assert.deepEqual(state.history, ['a']);
+  player.sync(items('c', 'd')); // a atual saiu da playlist: começa outra
+  assert.notEqual(state.playId, playId);
 });
 
 test('aleatório 2.0 sorteia pelo peso e não repete as últimas tocadas', () => {
