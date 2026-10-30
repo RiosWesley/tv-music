@@ -15,18 +15,21 @@ test('cada pessoa tem um voto por música, pode trocar ou desfazer, e o nome ign
   assert.deepEqual(votes.toJSON().songs, { a: { 'gabriel santos': -1 } });
 });
 
-test('superlike vale 5 curtidas e só pode ser usado uma vez a cada 7 dias, mesmo desfazendo', () => {
+test('superlike vale 5 curtidas, só pode ser usado uma vez a cada 7 dias e desfazer devolve', () => {
   let time = 0;
   const day = 24 * 3600e3;
   const votes = createVotes({}, () => time);
   votes.vote({ name: 'Ana', id: 'a', value: SUPER });
   votes.vote({ name: 'Bia', id: 'a', value: -1 });
   assert.equal(votes.tally('a').score, 4);
-  votes.vote({ name: 'Ana', id: 'a', value: 0 });
+  votes.vote({ name: 'Ana', id: 'a', value: 1 }); // trocou de ideia: superlike volta
+  votes.vote({ name: 'Ana', id: 'c', value: SUPER });
   time = 6 * day;
   assert.throws(() => votes.vote({ name: 'ana', id: 'b', value: SUPER }), /Libera em 1 dia/);
   time = 7 * day;
   votes.vote({ name: 'Ana', id: 'b', value: SUPER });
+  votes.vote({ name: 'Ana', id: 'c', value: 0 }); // desfazer o da semana passada não devolve o desta
+  assert.throws(() => votes.vote({ name: 'ana', id: 'd', value: SUPER }), /superlike/);
   assert.equal(votes.tally('b').superlikes, 1);
 });
 
@@ -64,4 +67,5 @@ test('votos sobrevivem a salvar e carregar, inclusive nomes estranhos', () => {
   assert.throws(() => restored.vote({ name: 'Ana', id: 'a', value: SUPER }), /superlike/);
   assert.equal(createVotes({ a: { ana: 1 } }).tally('a').likes, 1); // votes.json da versão anterior
   assert.equal(createVotes({ songs: { a: { ana: 3 } }, superlikes: {} }).tally('a').score, SUPER); // superlike antigo, de 3
+  assert.throws(() => createVotes({ songs: {}, superlikes: { ana: Date.now() } }).vote({ name: 'Ana', id: 'a', value: SUPER }), /superlike/); // só a data
 });

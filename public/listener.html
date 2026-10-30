@@ -25,8 +25,9 @@
   .by:empty { display: none; }
   form { display: flex; flex-direction: column; gap: 12px; margin-top: 15vh; }
   form h1 { margin: 0; }
-  form input { font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--line);
+  input { width: 100%; font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--line);
                border-radius: 14px; padding: 14px; }
+  #search { margin: 4px 0 8px; }
   form button { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
   #art { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 16px; background: var(--card); }
   .bar { height: 4px; background: var(--line); border-radius: 2px; margin: 16px 0; overflow: hidden; }
@@ -87,6 +88,11 @@
   <p class="me muted">Votando como <b id="me"></b> · <button id="change" class="link">trocar</button><br><span id="superStatus"></span></p>
   <h2>Próximas</h2>
   <ol id="upcoming"></ol>
+  <details id="all">
+    <summary>Playlist completa <span id="allCount" class="muted"></span></summary>
+    <input id="search" type="search" placeholder="Buscar música, artista ou quem adicionou" autocomplete="off">
+    <ol id="allSongs"></ol>
+  </details>
   <h2>Ranking de quem adicionou</h2>
   <p class="muted">Saldo das músicas de cada um: curtidas − não curtidas, superlike vale 5.</p>
   <ol id="ranking"></ol>
@@ -124,7 +130,7 @@
   function superStatus() {
     const used = state.votes.superlikes;
     const key = voterKey(name);
-    const wait = Object.hasOwn(used, key) ? used[key] + 7 * 24 * 3600e3 - Date.now() : 0;
+    const wait = Object.hasOwn(used, key) ? used[key].at + 7 * 24 * 3600e3 - Date.now() : 0;
     return wait > 0 ? `Superlike usado. Libera em ${Math.ceil(wait / 86400e3)} dia(s).` : 'Você tem 1 superlike esta semana ⭐';
   }
 
@@ -190,11 +196,23 @@
       .slice(0, 100);
   }
 
+  const plain = (text) => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+  // Playlist completa: só monta as linhas com o menu aberto, filtrando pela busca (ignora acentos e maiúsculas).
+  function renderAll(s) {
+    $('allCount').textContent = `· ${s.queue.length}`;
+    if (!$('all').open) return;
+    const query = plain($('search').value.trim());
+    const songs = s.queue.filter((item) => plain(`${item.title} ${item.artist} ${item.addedBy ?? ''}`).includes(query));
+    $('allSongs').replaceChildren(...songs.map(songRow));
+  }
+
   function renderLists(s) {
     $('upcoming').replaceChildren(...s.upcoming.map((i) => songRow(s.queue[i])));
     const played = playedSongs(s);
     $('playedCount').textContent = played.length ? `· ${played.length}` : '';
     $('played').replaceChildren(...played.map(songRow));
+    renderAll(s);
   }
 
   function render(s) {
@@ -227,6 +245,9 @@
     const button = e.target.closest('[data-vote]');
     if (button) vote(button.closest('[data-id]').dataset.id, Number(button.dataset.vote));
   });
+
+  $('all').addEventListener('toggle', () => { if (state) renderAll(state); });
+  $('search').addEventListener('input', () => { if (state) renderAll(state); });
 
   $('join').addEventListener('submit', (e) => {
     e.preventDefault();

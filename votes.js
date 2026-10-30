@@ -5,7 +5,7 @@ export const SUPER = 5;
 const WEEK = 7 * 24 * 3600e3;
 const voterKey = (name) => String(name ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
 
-// saved: { songs: {id: {pessoa: voto}}, superlikes: {pessoa: quando usou} }, ou só songs (votes.json antigo).
+// saved: { songs: {id: {pessoa: voto}}, superlikes: {pessoa: {at: quando usou, id: em qual música}} }, ou só songs (votes.json antigo).
 export function createVotes(saved = {}, now = Date.now) {
   const data = saved.songs ? saved : { songs: saved, superlikes: {} };
   // Superlikes gravados quando valiam 3 passam a valer SUPER.
@@ -13,7 +13,8 @@ export function createVotes(saved = {}, now = Date.now) {
     id,
     new Map(Object.entries(voters).map(([voter, value]) => [voter, value === 3 ? SUPER : value])),
   ]));
-  const superlikes = new Map(Object.entries(data.superlikes));
+  // Superlikes gravados só com a data (sem a música) não são devolvidos ao desfazer.
+  const superlikes = new Map(Object.entries(data.superlikes).map(([voter, used]) => [voter, typeof used === 'number' ? { at: used, id: null } : used]));
 
   function vote({ name, id, value }) {
     const voter = voterKey(name);
@@ -21,12 +22,15 @@ export function createVotes(saved = {}, now = Date.now) {
     if (voter.length > 40) throw new Error('Nome grande demais');
     if (![SUPER, 1, -1, 0].includes(value)) throw new Error('Voto inválido');
     const voters = songs.get(id) ?? new Map();
-    if (value === SUPER && voters.get(voter) !== SUPER) {
-      // Uma vez a cada 7 dias; desfazer não devolve, senão daria para trocar de música à vontade.
-      const wait = superlikes.get(voter) + WEEK - now();
-      if (superlikes.has(voter) && wait > 0) throw new Error(`Você já usou seu superlike da semana. Libera em ${Math.ceil(wait / 86400e3)} dia(s).`);
-      superlikes.set(voter, now());
+    const hadSuper = voters.get(voter) === SUPER;
+    if (value === SUPER && !hadSuper) {
+      // Uma vez a cada 7 dias.
+      const wait = superlikes.has(voter) ? superlikes.get(voter).at + WEEK - now() : 0;
+      if (wait > 0) throw new Error(`Você já usou seu superlike da semana. Libera em ${Math.ceil(wait / 86400e3)} dia(s).`);
+      superlikes.set(voter, { at: now(), id });
     }
+    // Desfazer o superlike da semana devolve ele; desfazer um de semanas anteriores não muda nada.
+    if (hadSuper && value !== SUPER && superlikes.get(voter)?.id === id) superlikes.delete(voter);
     if (value) voters.set(voter, value);
     else voters.delete(voter);
     if (voters.size) songs.set(id, voters);
