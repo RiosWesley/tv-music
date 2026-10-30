@@ -15,13 +15,13 @@ test('cada pessoa tem um voto por música, pode trocar ou desfazer, e o nome ign
   assert.deepEqual(votes.toJSON().songs, { a: { 'gabriel santos': -1 } });
 });
 
-test('superlike vale 3 curtidas e só pode ser usado uma vez a cada 7 dias, mesmo desfazendo', () => {
+test('superlike vale 5 curtidas e só pode ser usado uma vez a cada 7 dias, mesmo desfazendo', () => {
   let time = 0;
   const day = 24 * 3600e3;
   const votes = createVotes({}, () => time);
   votes.vote({ name: 'Ana', id: 'a', value: SUPER });
   votes.vote({ name: 'Bia', id: 'a', value: -1 });
-  assert.equal(votes.tally('a').score, 2);
+  assert.equal(votes.tally('a').score, 4);
   votes.vote({ name: 'Ana', id: 'a', value: 0 });
   time = 6 * day;
   assert.throws(() => votes.vote({ name: 'ana', id: 'b', value: SUPER }), /Libera em 1 dia/);
@@ -33,7 +33,7 @@ test('superlike vale 3 curtidas e só pode ser usado uma vez a cada 7 dias, mesm
 test('exige nome e voto válido', () => {
   const votes = createVotes();
   assert.throws(() => votes.vote({ name: '   ', id: 'a', value: 1 }), /Informe seu nome/);
-  assert.throws(() => votes.vote({ name: 'Ana', id: 'a', value: 5 }), /Voto inválido/);
+  assert.throws(() => votes.vote({ name: 'Ana', id: 'a', value: 7 }), /Voto inválido/);
 });
 
 test('peso do aleatório 2.0 segue o ranking de saldo: 1,5 no topo, 1 sem votos, 0,5 no fundo', () => {
@@ -63,4 +63,5 @@ test('votos sobrevivem a salvar e carregar, inclusive nomes estranhos', () => {
   assert.equal(restored.tally('b').dislikes, 1);
   assert.throws(() => restored.vote({ name: 'Ana', id: 'a', value: SUPER }), /superlike/);
   assert.equal(createVotes({ a: { ana: 1 } }).tally('a').likes, 1); // votes.json da versão anterior
+  assert.equal(createVotes({ songs: { a: { ana: 3 } }, superlikes: {} }).tally('a').score, SUPER); // superlike antigo, de 3
 });

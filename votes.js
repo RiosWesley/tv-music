@@ -1,14 +1,18 @@
-// Votos por música (ID do vídeo) e por pessoa: 1 = curtiu, -1 = não curtiu, SUPER = superlike (vale 3 curtidas).
+// Votos por música (ID do vídeo) e por pessoa: 1 = curtiu, -1 = não curtiu, SUPER = superlike (vale 5 curtidas).
 // Ficam fora da fila para sobreviver a recarregar a playlist. Map em vez de objeto para nenhum nome digitado
 // colidir com propriedades do JS.
-export const SUPER = 3;
+export const SUPER = 5;
 const WEEK = 7 * 24 * 3600e3;
 const voterKey = (name) => String(name ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
 
 // saved: { songs: {id: {pessoa: voto}}, superlikes: {pessoa: quando usou} }, ou só songs (votes.json antigo).
 export function createVotes(saved = {}, now = Date.now) {
   const data = saved.songs ? saved : { songs: saved, superlikes: {} };
-  const songs = new Map(Object.entries(data.songs).map(([id, voters]) => [id, new Map(Object.entries(voters))]));
+  // Superlikes gravados quando valiam 3 passam a valer SUPER.
+  const songs = new Map(Object.entries(data.songs).map(([id, voters]) => [
+    id,
+    new Map(Object.entries(voters).map(([voter, value]) => [voter, value === 3 ? SUPER : value])),
+  ]));
   const superlikes = new Map(Object.entries(data.superlikes));
 
   function vote({ name, id, value }) {
@@ -35,7 +39,7 @@ export function createVotes(saved = {}, now = Date.now) {
       likes: values.filter((v) => v === 1).length,
       dislikes: values.filter((v) => v === -1).length,
       superlikes: values.filter((v) => v === SUPER).length,
-      score: values.reduce((sum, v) => sum + v, 0), // saldo: curtidas − não curtidas, superlike vale 3
+      score: values.reduce((sum, v) => sum + v, 0), // saldo: curtidas − não curtidas, superlike vale 5
     };
   }
 

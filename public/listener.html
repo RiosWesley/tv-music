@@ -38,7 +38,7 @@
   .votes svg { width: 28px; height: 28px; }
   [data-vote="1"][aria-pressed=true] { background: #12301d; border-color: var(--like); color: var(--like); }
   [data-vote="-1"][aria-pressed=true] { background: #3a1416; border-color: var(--accent); color: var(--accent); }
-  [data-vote="3"][aria-pressed=true] { background: #33290a; border-color: var(--super); color: var(--super); }
+  [data-vote="5"][aria-pressed=true] { background: #33290a; border-color: var(--super); color: var(--super); }
   #ranking li { gap: 12px; font-size: 15px; }
   #ranking .pos { width: 24px; color: var(--muted); font-variant-numeric: tabular-nums; }
   #ranking .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -82,13 +82,13 @@
   <div id="current" class="votes">
     <button data-vote="1" aria-label="Curtir" aria-pressed="false"><svg><use href="#i-like"/></svg><span class="n">0</span></button>
     <button data-vote="-1" aria-label="Não curtir" aria-pressed="false"><svg><use href="#i-dislike"/></svg><span class="n">0</span></button>
-    <button data-vote="3" aria-label="Superlike" aria-pressed="false"><svg><use href="#i-star"/></svg><span class="n">0</span></button>
+    <button data-vote="5" aria-label="Superlike" aria-pressed="false"><svg><use href="#i-star"/></svg><span class="n">0</span></button>
   </div>
   <p class="me muted">Votando como <b id="me"></b> · <button id="change" class="link">trocar</button><br><span id="superStatus"></span></p>
   <h2>Próximas</h2>
   <ol id="upcoming"></ol>
   <h2>Ranking de quem adicionou</h2>
-  <p class="muted">Saldo das músicas de cada um: curtidas − não curtidas, superlike vale 3.</p>
+  <p class="muted">Saldo das músicas de cada um: curtidas − não curtidas, superlike vale 5.</p>
   <ol id="ranking"></ol>
   <details>
     <summary>Já tocou <span id="playedCount" class="muted"></span></summary>
@@ -103,7 +103,7 @@
     <div class="mini">
       <button data-vote="1" aria-label="Curtir"><svg><use href="#i-like"/></svg><span class="n"></span></button>
       <button data-vote="-1" aria-label="Não curtir"><svg><use href="#i-dislike"/></svg><span class="n"></span></button>
-      <button data-vote="3" aria-label="Superlike"><svg><use href="#i-star"/></svg><span class="n"></span></button>
+      <button data-vote="5" aria-label="Superlike"><svg><use href="#i-star"/></svg><span class="n"></span></button>
     </div>
   </li>
 </template>

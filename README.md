@@ -14,7 +14,7 @@ Toca playlists do YouTube Music na TV LG (webOS) com a fila inteira, controlada 
 O servidor acha a TV na rede, descobre o IP atual do PC e abre o app na TV já apontando para ele. A janela mostra os endereços:
 
 - `http://<ip-do-pc>:8080` é o controle completo (as próximas 10, a fila completa num menu recolhido, pular, volume).
-- `http://<ip-do-pc>:8080/ouvinte` é para quem só quer ver o que está tocando, as próximas 10 e, num menu recolhido, as que já tocaram, e curtir ou não curtir essas músicas. Pede um nome antes de votar; cada nome tem um voto por música e 1 superlike a cada 7 dias (vale 3 curtidas). Mostra também o ranking de quem adicionou: o saldo de todas as músicas de cada pessoa. A TV mostra a próxima, as contagens da música atual e um alerta a cada voto.
+- `http://<ip-do-pc>:8080/ouvinte` é para quem só quer ver o que está tocando, as próximas 10 e, num menu recolhido, as que já tocaram, e curtir ou não curtir essas músicas. Pede um nome antes de votar; cada nome tem um voto por música e 1 superlike a cada 7 dias (vale 5 curtidas). Mostra também o ranking de quem adicionou: o saldo de todas as músicas de cada pessoa. A TV mostra a próxima, as contagens da música atual e um alerta a cada voto.
 
 **Playlist fixa:** o servidor toca sempre a playlist do grupo (troque com `PLAYLIST_URL=<link>` no `.env`). Ela é atualizada quando o servidor sobe e pelo botão **Atualizar playlist**, que traz as músicas novas, tira as removidas e junta as duplicadas sem interromper a atual nem esquecer o que já tocou.
 

@@ -61,7 +61,7 @@
   // Alerta no canto quando alguém vota pela página de ouvinte.
   function toast(vote) {
     var el = document.getElementById('toast');
-    var kind = vote.value === 3 ? 'super' : vote.value === 1 ? 'like' : 'dislike';
+    var kind = vote.value === 5 ? 'super' : vote.value === 1 ? 'like' : 'dislike';
     el.classList.toggle('dislike', kind === 'dislike');
     el.classList.toggle('super', kind === 'super');
     document.getElementById('toastIcon').setAttribute('href', { like: '#i-like', dislike: '#i-dislike', super: '#i-star' }[kind]);
@@ -91,7 +91,7 @@
     var voters = item && s.votes.songs[item.id] || {};
     document.getElementById('likes').textContent = countVotes(voters, 1);
     document.getElementById('dislikes').textContent = countVotes(voters, -1);
-    var supers = countVotes(voters, 3);
+    var supers = countVotes(voters, 5);
     document.getElementById('supers').textContent = supers;
     document.getElementById('supers').style.display = document.getElementById('superIcon').style.display = supers ? '' : 'none';
     if (!item) {
