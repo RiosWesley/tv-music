@@ -20,7 +20,7 @@ O servidor acha a TV na rede, descobre o IP atual do PC e abre o app na TV já a
 
 Os votos ficam em `votes.json`, na pasta do projeto do PC que roda o servidor. São gravados na hora, por ID do vídeo, então valem mesmo se a playlist for recarregada. Não vão para o GitHub: ao trocar de PC, copie o `votes.json` junto com o `.env`.
 
-**Aleatório 2.0** (botão ao lado do volume): sorteia as músicas dando mais chance às mais curtidas. Peso 1 para quem não tem votos, até 1,5 para a de maior saldo (curtidas − não curtidas) e até 0,5 para a de pior saldo. As próximas 10 ficam sorteadas com antecedência e são elas que aparecem em "Próximas", então um voto vale para os sorteios depois delas. Não repete nenhuma música que tocou na última metade da fila (cerca de 385 músicas numa playlist de 770). "Tocar a seguir" fura o sorteio, e "voltar" volta para a que tocou antes de verdade.
+**Aleatório 2.0** (botão ao lado do volume): sorteia as músicas dando mais chance às mais curtidas. Peso 1 para quem não tem votos, até 1,5 para a de maior saldo (curtidas − não curtidas) e até 0,5 para a de pior saldo. As próximas 10 ficam sorteadas com antecedência e são elas que aparecem em "Próximas", então um voto vale para os sorteios depois delas. Não repete nenhuma música que tocou na última metade da fila (cerca de 385 músicas numa playlist de 770). "Tocar a seguir" fura o sorteio, as setas nas Próximas mudam a ordem, e "voltar" volta para a que tocou antes de verdade.
 
 Se a TV estava desligada, ligue-a e toque em **Abrir na TV** no celular. Abrir o app pelo controle remoto também funciona, enquanto o IP do PC não mudar.
 

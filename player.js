@@ -158,6 +158,15 @@ export function createPlayer(state, weights) {
       state.queue.splice(state.index + 1, 0, item);
       if (state.smartShuffle) state.upNext = [item.id, ...state.upNext.filter((id) => id !== item.id)];
     },
+    // Reordena as próximas: leva a da posição `from` para `to` (posições na lista de upcoming()).
+    moveUpcoming({ from, to }) {
+      const slots = upcoming();
+      if (![from, to].every((p) => Number.isInteger(p) && p >= 0 && p < slots.length)) throw new Error('Posição inválida');
+      const order = slots.map((i) => state.queue[i]);
+      order.splice(to, 0, ...order.splice(from, 1));
+      if (state.smartShuffle) state.upNext = order.map((item) => item.id);
+      else slots.forEach((slot, k) => { state.queue[slot] = order[k]; }); // mesmas posições da fila, outra ordem
+    },
   };
 
   refill(); // estado salvo por uma versão sem as próximas sorteadas

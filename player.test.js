@@ -44,6 +44,21 @@ test('tocar a seguir move o item para depois da atual', () => {
   assert.equal(current(), 'c');
 });
 
+test('reordenar as próximas, com e sem o aleatório 2.0', () => {
+  const { state, player } = setup(['a', 'b', 'c', 'd', 'e']);
+  const next = () => player.upcoming().map((i) => state.queue[i].id);
+  player.commands.play({ index: 3 });
+  player.commands.moveUpcoming({ from: 0, to: 2 }); // próximas eram e, a, b, c (fila em loop)
+  assert.deepEqual(next(), ['a', 'b', 'e', 'c']);
+  assert.equal(state.queue[state.index].id, 'd');
+  assert.throws(() => player.commands.moveUpcoming({ from: 0, to: 4 }), /Posição inválida/);
+
+  player.commands.smartShuffle({ value: true });
+  const before = next();
+  player.commands.moveUpcoming({ from: before.length - 1, to: 0 });
+  assert.deepEqual(next(), [before.at(-1), ...before.slice(0, -1)]);
+});
+
 test('erros em todas as faixas pausam em vez de pular para sempre', () => {
   const { state, player } = setup(['a', 'b']);
   player.report({ type: 'error', playId: state.playId });
