@@ -2,19 +2,27 @@
 // Ficam fora da fila para sobreviver a recarregar a playlist. Map em vez de objeto para nenhum nome digitado
 // colidir com propriedades do JS.
 export const SUPER = 5;
-const WEEK = 7 * 24 * 3600e3;
 const voterKey = (name) => String(name ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
 
-// saved: { songs: {id: {pessoa: voto}}, superlikes: {pessoa: {at: quando usou, id: em qual música}} }, ou só songs (votes.json antigo).
+// O superlike renova toda segunda às 6h, no horário do PC do servidor. Devolve quando começou a semana de `time`.
+export function weekStart(time) {
+  const start = new Date(time);
+  start.setHours(6, 0, 0, 0);
+  start.setDate(start.getDate() - ((start.getDay() + 6) % 7)); // volta até a segunda
+  if (start > time) start.setDate(start.getDate() - 7); // segunda antes das 6h ainda é a semana anterior
+  return start.getTime();
+}
+
+// saved: { songs: {id: {pessoa: voto}}, weeklySuperlikes: {pessoa: {at: quando usou, id: em qual música}} }, ou só songs (votes.json antigo).
+// O campo `superlikes` das versões de "1 a cada 7 dias" é ignorado: a troca para segunda-feira devolveu o superlike de todos.
 export function createVotes(saved = {}, now = Date.now) {
-  const data = saved.songs ? saved : { songs: saved, superlikes: {} };
+  const data = saved.songs ? saved : { songs: saved };
   // Superlikes gravados quando valiam 3 passam a valer SUPER.
   const songs = new Map(Object.entries(data.songs).map(([id, voters]) => [
     id,
     new Map(Object.entries(voters).map(([voter, value]) => [voter, value === 3 ? SUPER : value])),
   ]));
-  // Superlikes gravados só com a data (sem a música) não são devolvidos ao desfazer.
-  const superlikes = new Map(Object.entries(data.superlikes).map(([voter, used]) => [voter, typeof used === 'number' ? { at: used, id: null } : used]));
+  const superlikes = new Map(Object.entries(data.weeklySuperlikes ?? {}));
 
   function vote({ name, id, value }) {
     const voter = voterKey(name);
@@ -24,9 +32,9 @@ export function createVotes(saved = {}, now = Date.now) {
     const voters = songs.get(id) ?? new Map();
     const hadSuper = voters.get(voter) === SUPER;
     if (value === SUPER && !hadSuper) {
-      // Uma vez a cada 7 dias.
-      const wait = superlikes.has(voter) ? superlikes.get(voter).at + WEEK - now() : 0;
-      if (wait > 0) throw new Error(`Você já usou seu superlike da semana. Libera em ${Math.ceil(wait / 86400e3)} dia(s).`);
+      if (superlikes.has(voter) && superlikes.get(voter).at >= weekStart(now())) {
+        throw new Error('Você já usou seu superlike da semana. Ele renova segunda às 6h.');
+      }
       superlikes.set(voter, { at: now(), id });
     }
     // Desfazer o superlike da semana devolve ele; desfazer um de semanas anteriores não muda nada.
@@ -63,7 +71,7 @@ export function createVotes(saved = {}, now = Date.now) {
 
   const toJSON = () => ({
     songs: Object.fromEntries([...songs].map(([id, voters]) => [id, Object.fromEntries(voters)])),
-    superlikes: Object.fromEntries(superlikes),
+    weeklySuperlikes: Object.fromEntries(superlikes),
   });
 
   return { vote, tally, weights, toJSON };

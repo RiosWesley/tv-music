@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createVotes, SUPER } from './votes.js';
+import { createVotes, SUPER, weekStart } from './votes.js';
 
 test('cada pessoa tem um voto por música, pode trocar ou desfazer, e o nome ignora maiúsculas e espaços', () => {
   const votes = createVotes();
@@ -15,18 +15,25 @@ test('cada pessoa tem um voto por música, pode trocar ou desfazer, e o nome ign
   assert.deepEqual(votes.toJSON().songs, { a: { 'gabriel santos': -1 } });
 });
 
-test('superlike vale 5 curtidas, só pode ser usado uma vez a cada 7 dias e desfazer devolve', () => {
-  let time = 0;
-  const day = 24 * 3600e3;
+test('semana do superlike começa segunda às 6h', () => {
+  const at = (day, hour, minute = 0) => new Date(2026, 10, day, hour, minute).getTime(); // 02/11/2026 é segunda
+  assert.equal(weekStart(at(2, 6)), at(2, 6));
+  assert.equal(weekStart(at(8, 23)), at(2, 6));
+  assert.equal(weekStart(at(9, 5, 59)), at(2, 6));
+  assert.equal(weekStart(at(9, 6)), at(9, 6));
+});
+
+test('superlike vale 5 curtidas, só pode ser usado uma vez por semana e desfazer devolve', () => {
+  let time = new Date(2026, 10, 3, 12).getTime(); // terça
   const votes = createVotes({}, () => time);
   votes.vote({ name: 'Ana', id: 'a', value: SUPER });
   votes.vote({ name: 'Bia', id: 'a', value: -1 });
   assert.equal(votes.tally('a').score, 4);
   votes.vote({ name: 'Ana', id: 'a', value: 1 }); // trocou de ideia: superlike volta
   votes.vote({ name: 'Ana', id: 'c', value: SUPER });
-  time = 6 * day;
-  assert.throws(() => votes.vote({ name: 'ana', id: 'b', value: SUPER }), /Libera em 1 dia/);
-  time = 7 * day;
+  time = new Date(2026, 10, 9, 5).getTime(); // segunda seguinte, antes das 6h
+  assert.throws(() => votes.vote({ name: 'ana', id: 'b', value: SUPER }), /renova segunda/);
+  time = new Date(2026, 10, 9, 6).getTime();
   votes.vote({ name: 'Ana', id: 'b', value: SUPER });
   votes.vote({ name: 'Ana', id: 'c', value: 0 }); // desfazer o da semana passada não devolve o desta
   assert.throws(() => votes.vote({ name: 'ana', id: 'd', value: SUPER }), /superlike/);
@@ -67,5 +74,5 @@ test('votos sobrevivem a salvar e carregar, inclusive nomes estranhos', () => {
   assert.throws(() => restored.vote({ name: 'Ana', id: 'a', value: SUPER }), /superlike/);
   assert.equal(createVotes({ a: { ana: 1 } }).tally('a').likes, 1); // votes.json da versão anterior
   assert.equal(createVotes({ songs: { a: { ana: 3 } }, superlikes: {} }).tally('a').score, SUPER); // superlike antigo, de 3
-  assert.throws(() => createVotes({ songs: {}, superlikes: { ana: Date.now() } }).vote({ name: 'Ana', id: 'a', value: SUPER }), /superlike/); // só a data
+  createVotes({ songs: {}, superlikes: { ana: { at: Date.now(), id: 'x' } } }).vote({ name: 'Ana', id: 'a', value: SUPER }); // regra antiga: devolvido
 });

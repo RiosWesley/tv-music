@@ -83,13 +83,12 @@ export function createPlayer(state, weights) {
   }
 
   // Atualiza a fila com a playlist: entram as novas, saem as removidas, duplicadas viram uma só.
-  // A música atual continua tocando e o histórico é mantido, para não repetir o que já tocou.
-  // ponytail: re-sortear perde os "tocar a seguir" pendentes; guarde-os à parte se isso incomodar.
+  // A música atual, o histórico e as próximas já sorteadas são mantidos (o servidor sincroniza toda vez que sobe);
+  // as novas entram nos sorteios seguintes.
   function sync(items) {
     if (!items.length) throw new Error('Playlist vazia ou privada');
     const currentId = state.queue[state.index]?.id;
     state.queue = [...new Map(items.map((item) => [item.id, item])).values()];
-    state.upNext = []; // re-sorteia as próximas já com as músicas novas
     const index = indexOf(currentId);
     if (index >= 0) {
       state.index = index;

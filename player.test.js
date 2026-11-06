@@ -65,6 +65,16 @@ test('atualizar a playlist mantém a atual tocando e o histórico, e junta dupli
   assert.notEqual(state.playId, playId);
 });
 
+test('atualizar a playlist no aleatório 2.0 mantém as próximas sorteadas, tirando só as removidas', () => {
+  const ids = Array.from({ length: 40 }, (_, i) => `s${i}`);
+  const { state, player } = setup(ids);
+  player.commands.smartShuffle({ value: true });
+  const [removed, ...kept] = state.upNext;
+  player.sync(items(...ids.filter((id) => id !== removed), 'nova'));
+  assert.deepEqual(state.upNext.slice(0, kept.length), kept);
+  assert.equal(state.upNext.length, 10);
+});
+
 test('aleatório 2.0 sorteia pelo peso e não repete as últimas tocadas', () => {
   const ids = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
   const queue = setup(ids, (queueIds) => queueIds.map((id) => (id === 'j' ? 0 : 1)));
